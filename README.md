@@ -146,9 +146,11 @@ pip install -e ".[dev]"
 
 ## Roadmap
 
+- [ ] VHS terminal demo GIF ([charmbracelet/vhs](https://github.com/charmbracelet/vhs))
 - [ ] AI-enhanced diagnosis (Claude Code, Codex integration)
 - [ ] Auto-install helper for kd.exe / Windows SDK
 - [ ] mcp-windbg integration for structured dump analysis
+- [ ] Cross-platform support (Linux via journalctl/dmesg, macOS via log show)
 - [ ] Port exhaustion detection
 - [ ] Integration with [Stop-Windows-Restarting](https://github.com/djdarcy/Stop-Windows-Restarting)
 - [ ] Export to HTML report

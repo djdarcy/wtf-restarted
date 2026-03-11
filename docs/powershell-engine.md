@@ -21,7 +21,71 @@ investigate.ps1 (PowerShell)
 Structured JSON --> Python renders with Rich
 ```
 
+```mermaid
+flowchart TD
+    subgraph CLI ["Python CLI"]
+        A["wtf-restarted / wtfr"]
+        A -->|diagnose| B[investigator.py]
+        A -->|history| C[history.py]
+    end
+
+    subgraph PS ["PowerShell Engine"]
+        D[investigate.ps1]
+        E[history.ps1]
+    end
+
+    B -->|"subprocess: powershell -File"| D
+    C -->|"subprocess: powershell -File"| E
+
+    subgraph WIN ["Windows APIs"]
+        F["Get-WinEvent\n(System + Application logs)"]
+        G["Get-CimInstance\nWin32_OperatingSystem"]
+        H["query session\n(RDP detection)"]
+        I["kd.exe\n(crash dump analysis)"]
+    end
+
+    D --> F
+    D --> G
+    D --> H
+    D -.->|optional| I
+    E --> F
+
+    D -->|JSON| B
+    E -->|JSON| C
+
+    subgraph OUT ["Output"]
+        J["Rich tables + panels\n(terminal)"]
+        K["Raw JSON\n(--json flag)"]
+    end
+
+    B --> J
+    B --> K
+    C --> J
+    C --> K
+```
+
 The Python layer handles argument parsing, pretty output (Rich tables and panels), and the `history` subcommand. The PowerShell script does all the actual investigation work.
+
+### Why PowerShell?
+
+The investigation engine is written in PowerShell rather than pure Python because:
+
+1. **Direct access to Windows Event Logs** -- `Get-WinEvent` is the standard tool, with filtering by provider, ID, and time range built in
+2. **No extra dependencies** -- PowerShell 5.1 ships with Windows 10/11
+3. **CIM/WMI integration** -- system information queries are one-liners
+4. **Crash dump analysis** -- `kd.exe` is a native Windows debugger; PowerShell can invoke it and parse the output naturally
+
+### Why Python on top?
+
+If PowerShell does all the heavy lifting, why not ship the PS1 by itself?
+
+1. **Rich terminal output** -- PowerShell's `Write-Host` gives you colored text, but not tables, panels, progress bars, or responsive layouts. Rich does all of that out of the box.
+2. **`pip install` distribution** -- one command installs the tool, registers `wtf-restarted` and `wtfr` as commands, and bundles the PS1 scripts. No manual PATH setup, no copying files around.
+3. **Cross-platform future** -- when Linux and macOS backends are added, Python is the natural dispatch layer. The CLI stays the same; only the backend changes per OS. PowerShell alone can't provide that.
+4. **JSON post-processing** -- Python handles the structured JSON from PowerShell, merges results, and decides what to display based on `--verbose`, `--json`, etc. Doing this formatting logic in PowerShell would be fragile and hard to test.
+5. **Testability** -- pytest can exercise the CLI, argument parsing, rendering logic, and JSON handling without touching event logs. The PS1 scripts are tested by running them on real Windows systems.
+
+In short: PowerShell is better at talking to Windows. Python is better at everything around it -- packaging, output, testing, and future portability.
 
 ## Using investigate.ps1 Directly
 
@@ -115,7 +179,7 @@ The JSON output has this structure (all fields are always present):
     "uptime_display": "0.12:00:00",
     "lookback_hours": 48,
     "os_version": "Microsoft Windows NT 10.0.26200.0",
-    "computer_name": "PLZWORK"
+    "computer_name": "HAPPYBOX"
   },
   "rdp": {
     "is_rdp": false,

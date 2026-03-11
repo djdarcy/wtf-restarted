@@ -36,14 +36,7 @@ Windows Event Logs, CIM/WMI, crash dumps, WTS API
 | **WHEA errors** | `Microsoft-Windows-WHEA-Logger` provider | Hardware fault detection |
 | **GPU events** | Event IDs 4101, 4097, `nvlddmkm` provider | Display driver TDR/recovery |
 
-### Why PowerShell?
-
-The investigation engine is written in PowerShell rather than pure Python because:
-
-1. **Direct access to Windows Event Logs** -- `Get-WinEvent` is the standard tool, with filtering by provider, ID, and time range built in
-2. **No extra dependencies** -- PowerShell 5.1 ships with Windows 10/11
-3. **CIM/WMI integration** -- System information queries are one-liners
-4. **Crash dump analysis** -- `kd.exe` is a native Windows debugger; PowerShell can invoke it directly and parse the output
+For why the tool uses both PowerShell and Python (and what each layer is responsible for), see [powershell-engine.md](powershell-engine.md#why-powershell).
 
 ## Future: Cross-Platform Abstraction
 
@@ -72,6 +65,49 @@ Platform abstraction (Python)         <-- new layer
     +-- windows/ (PowerShell scripts, current implementation)
     +-- linux/   (journalctl, /proc, dmesg)
     +-- darwin/  (log show, sysctl, DiagnosticReports)
+```
+
+```mermaid
+flowchart TD
+    subgraph CLI ["Python CLI (unchanged)"]
+        A["wtf-restarted / wtfr"]
+        B["Output: Rich tables, JSON"]
+    end
+
+    A --> C
+
+    subgraph PLAT ["Platform Abstraction Layer (new)"]
+        C{{"platform.system()"}}
+        C -->|Windows| D["WindowsInvestigator"]
+        C -->|Linux| E["LinuxInvestigator"]
+        C -->|Darwin| F["MacInvestigator"]
+    end
+
+    subgraph WINSRC ["Windows Sources"]
+        D --> D1["investigate.ps1\nhistory.ps1"]
+        D1 --> D2["Get-WinEvent"]
+        D1 --> D3["Win32_OperatingSystem"]
+        D1 --> D4["kd.exe"]
+    end
+
+    subgraph LINSRC ["Linux Sources"]
+        E --> E1["journalctl -k"]
+        E --> E2["/proc/uptime"]
+        E --> E3["last -x reboot"]
+        E --> E4["/var/crash/"]
+    end
+
+    subgraph MACSRC ["macOS Sources"]
+        F --> F1["log show"]
+        F --> F2["sysctl kern.boottime"]
+        F --> F3["last reboot"]
+        F --> F4["DiagnosticReports/"]
+    end
+
+    D --> G["Unified JSON Schema"]
+    E --> G
+    F --> G
+    G --> B
 ```
 
 Each platform backend would implement a common interface:

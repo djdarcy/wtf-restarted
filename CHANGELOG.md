@@ -5,6 +5,18 @@ All notable changes to wtf-restarted will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- GitHub traffic tracking via ghtraf (badge gist, archive gist, stats dashboard)
+- Mermaid architecture diagram in powershell-engine.md
+- VHS demo and cross-platform support added to roadmap
+
+### Fixed
+
+- CI matrix: remove Python 3.9 (requires-python >= 3.10)
+
 ## [0.1.0-alpha] - 2026-03-11
 
 ### Added

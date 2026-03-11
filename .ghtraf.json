@@ -1,0 +1,13 @@
+{
+  "owner": "djdarcy",
+  "repo": "wtf-restarted",
+  "created": "2026-03-11",
+  "display_name": "wtf-restarted",
+  "badge_gist_id": "c350f8487c9510480a341f4d3274de0a",
+  "archive_gist_id": "531c114eccfde35123d188893c90f8ff",
+  "dashboard_dir": "docs/stats",
+  "schema_version": 1,
+  "ci_workflows": [
+    "CI"
+  ]
+}
