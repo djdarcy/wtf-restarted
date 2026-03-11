@@ -4,10 +4,11 @@
 [![Release Date](https://img.shields.io/github/release-date/djdarcy/wtf-restarted?color=green)](https://github.com/djdarcy/wtf-restarted/releases)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: GPL v3](https://img.shields.io/badge/license-GPL%20v3-green.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
+[![Installs](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/djdarcy/c350f8487c9510480a341f4d3274de0a/raw/installs.json)](https://djdarcy.github.io/wtf-restarted/stats/#installs)
 [![GitHub Discussions](https://img.shields.io/github/discussions/djdarcy/wtf-restarted)](https://github.com/djdarcy/wtf-restarted/discussions)
 [![Platform](https://img.shields.io/badge/platform-Windows-blue.svg)](docs/platform-support.md)
 
-**Why did my Windows PC restart?** One command, instant answers.
+**WhyTF did my Windows PC restart?** One command, instant answers.
 
 ## The Problem
 
@@ -43,19 +44,17 @@ That's it. You'll see something like:
 
 ## What It Checks
 
-| Check | Event IDs | What It Means |
-|-------|-----------|---------------|
-| Dirty shutdown | 41, 6008 | Power loss, hardware reset, or BSOD |
-| Shutdown initiator | 1074, 1076 | Which process asked for the restart |
-| BugCheck / BSOD | 1001 (WER) | Blue screen crash details |
-| WHEA errors | WHEA-Logger | Hardware faults (CPU, memory, PCIe) |
-| Windows Update | 19, 20 | Update installs near restart time |
-| App crashes | Application Error | Programs that crashed before reboot |
-| GPU driver events | 4101, 4097 | Display driver TDR / recovery |
-| Power transitions | 109 | Sleep/wake/hibernate state changes |
-| Crash dumps | MEMORY.DMP, Minidump | BSOD dump files for deep analysis |
-| Boot sequence | 6005, 6006, 6009 | Clean vs dirty shutdown pattern |
-| RDP session | WTS API | Detects Remote Desktop vs console |
+The tool reads the same Windows Event Logs that Event Viewer uses, but focuses on the events that actually matter for answering "why did my PC restart?"
+
+It starts by looking for signs of a **dirty shutdown** -- the kernel-level markers (Event 41, 6008) that Windows records when the system didn't shut down cleanly. This catches power losses, hard resets, and BSODs.
+
+Next, it checks whether a **process requested the restart** (Event 1074). This is how Windows tracks which program -- usually Windows Update, but sometimes a user or an installer -- asked the system to reboot. If a restart was requested *and* the shutdown was clean, the answer is straightforward.
+
+For crashes, the tool looks for **BugCheck reports** from Windows Error Reporting, **crash dump files** on disk (`MEMORY.DMP`, minidumps), and **WHEA hardware errors** that point to CPU, memory, or PCIe faults. If `kd.exe` (the Windows SDK debugger) is installed, it can crack open the dump file and extract the exact bugcheck code and faulting driver.
+
+It also collects supporting context: **Windows Update activity** near the restart time, **application crashes** in the hour before reboot, **GPU driver timeouts** (TDR events), **power state transitions** (sleep/wake/hibernate), and the **boot/shutdown sequence** to distinguish clean restarts from dirty ones. If you're connected via **Remote Desktop**, it warns you that your "missing windows" might just be on a different session.
+
+For the full list of event IDs, providers, manual lookup steps, and how to add your own checks, see [docs/event-reference.md](docs/event-reference.md).
 
 ## Commands
 
