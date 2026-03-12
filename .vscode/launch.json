@@ -1,0 +1,94 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "wtf-restarted: diagnose",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "wtf_restarted",
+            "justMyCode": true,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "wtf-restarted: diagnose (verbose)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "wtf_restarted",
+            "args": ["--verbose"],
+            "justMyCode": true,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "wtf-restarted: diagnose (JSON)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "wtf_restarted",
+            "args": ["--json"],
+            "justMyCode": true,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "wtf-restarted: diagnose (skip dump)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "wtf_restarted",
+            "args": ["--skip-dump"],
+            "justMyCode": true,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "wtf-restarted: diagnose (custom hours)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "wtf_restarted",
+            "args": ["--hours", "72"],
+            "justMyCode": true,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "wtf-restarted: history",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "wtf_restarted",
+            "args": ["history"],
+            "justMyCode": true,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "wtf-restarted: history (90 days)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "wtf_restarted",
+            "args": ["history", "--days", "90"],
+            "justMyCode": true,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "wtf-restarted: history (JSON)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "wtf_restarted",
+            "args": ["history", "--json"],
+            "justMyCode": true,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "pytest: all tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": ["tests/", "-v"],
+            "justMyCode": true,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "pytest: current file",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": ["${file}", "-v"],
+            "justMyCode": true,
+            "console": "integratedTerminal"
+        }
+    ]
+}

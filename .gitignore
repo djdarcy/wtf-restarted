@@ -141,6 +141,9 @@ credentials.json
 # Add custom patterns below
 tests/output/*
 !tests/output/.gitkeep
+docs/images/bak/
+*.exe
+*.obj
 
 # RepoKit Private Content Protection (DO NOT REMOVE)
 CLAUDE.md

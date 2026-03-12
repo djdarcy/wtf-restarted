@@ -3,7 +3,7 @@
 [![PyPI](https://img.shields.io/pypi/v/wtf-restarted?color=green)](https://pypi.org/project/wtf-restarted/)
 [![Release Date](https://img.shields.io/github/release-date/djdarcy/wtf-restarted?color=green)](https://github.com/djdarcy/wtf-restarted/releases)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License: GPL v3](https://img.shields.io/badge/license-GPL%20v3-green.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
+[![License: AGPL v3](https://img.shields.io/badge/license-AGPL%20v3-green.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
 [![Installs](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/djdarcy/c350f8487c9510480a341f4d3274de0a/raw/installs.json)](https://djdarcy.github.io/wtf-restarted/stats/#installs)
 [![GitHub Discussions](https://img.shields.io/github/discussions/djdarcy/wtf-restarted)](https://github.com/djdarcy/wtf-restarted/discussions)
 [![Platform](https://img.shields.io/badge/platform-Windows-blue.svg)](docs/platform-support.md)
@@ -14,7 +14,7 @@
 
 Your Windows PC restarted and you don't know why. Maybe you were away. Maybe it happened overnight. You come back to a fresh desktop and zero context. The "official" answer is to open Event Viewer, navigate through layers of cryptic logs, and decode event IDs. Most users never do this.
 
-**wtf-restarted** reads the same event logs, crash dumps, and system state that Event Viewer uses -- but gives you a plain-language verdict instead of raw event XML.
+**wtf-restarted** reads the same event logs, crash dumps, and system state that Event Viewer uses, but gives you a plain-language verdict instead of raw event XML.
 
 ## Quick Start
 
@@ -25,34 +25,25 @@ wtf-restarted
 
 That's it. You'll see something like:
 
-```
-+----------------------------------------------+
-| WTF-RESTARTED -- Last Restart Analysis       |
-+----------------------------------------------+
-  Last boot:       2026-03-11 04:42:10
-  Current uptime:  0.11:38:43
-  Computer:        PLZWORK
-
-+------------------- VERDICT ------------------+
-| INITIATED RESTART                            |
-|                                              |
-| Windows Update triggered the restart.        |
-|   - KB5079473 (Security Update) installed    |
-|   - TrustedInstaller.exe initiated reboot    |
-+----------------------------------------------+
-```
+<p align="center">
+  <picture>
+    <img src="docs/images/demo-lossy80.gif" alt="wtf-restarted demo showing verdict and evidence summary">
+  </picture>
+  <br>
+  <sub><a href="docs/images/demo.jpg">Static screenshot</a> if the GIF doesn't load</sub>
+</p>
 
 ## What It Checks
 
-The tool reads the same Windows Event Logs that Event Viewer uses, but focuses on the events that actually matter for answering "why did my PC restart?"
+**WTF-restarted** (pronounced: *wut-thuh-eff re-tar-ded*) reads the same Windows Event Logs that Event Viewer uses, but focuses on the events that actually matter for answering "why did my PC restart?"
 
-It starts by looking for signs of a **dirty shutdown** -- the kernel-level markers (Event 41, 6008) that Windows records when the system didn't shut down cleanly. This catches power losses, hard resets, and BSODs.
+It starts by looking for signs of a **dirty shutdown**. For example,  Windows records kernel-level markers like [Event 41](https://learn.microsoft.com/en-us/windows/client-management/troubleshoot-event-id-41-restart) and [6008](docs/event-reference.md#event-6008----previous-shutdown-was-unexpected), which are indicators the system didn't shut down cleanly. This catches power losses, hard resets, and BSODs.
 
-Next, it checks whether a **process requested the restart** (Event 1074). This is how Windows tracks which program -- usually Windows Update, but sometimes a user or an installer -- asked the system to reboot. If a restart was requested *and* the shutdown was clean, the answer is straightforward.
+Next, `wtfr` checks whether a **process requested the restart** ([Event 1074](docs/event-reference.md#event-1074----process-initiated-restartshutdown)). This is how Windows tracks which program (usually Windows Update, but sometimes a user or an installer) asked the system to reboot. If a restart was requested *and* the shutdown was clean, the answer is straightforward.
 
-For crashes, the tool looks for **BugCheck reports** from Windows Error Reporting, **crash dump files** on disk (`MEMORY.DMP`, minidumps), and **WHEA hardware errors** that point to CPU, memory, or PCIe faults. If `kd.exe` (the Windows SDK debugger) is installed, it can crack open the dump file and extract the exact bugcheck code and faulting driver.
+For crashes, the tool looks for **BugCheck reports** from Windows Error Reporting, **crash dump files** on disk (`MEMORY.DMP`, minidumps), and **[WHEA hardware errors](https://learn.microsoft.com/en-us/windows-hardware/drivers/whea/)** that point to CPU, memory, or PCIe faults. If `kd.exe` (the Windows SDK debugger) is installed, it can crack open the dump file and extract the exact bugcheck code and faulting driver.
 
-It also collects supporting context: **Windows Update activity** near the restart time, **application crashes** in the hour before reboot, **GPU driver timeouts** (TDR events), **power state transitions** (sleep/wake/hibernate), and the **boot/shutdown sequence** to distinguish clean restarts from dirty ones. If you're connected via **Remote Desktop**, it warns you that your "missing windows" might just be on a different session.
+It also collects supporting context: **Windows Update activity** near the restart time, **application crashes** in the hour before reboot, **[GPU driver timeouts](https://learn.microsoft.com/en-us/windows-hardware/drivers/display/timeout-detection-and-recovery)** (TDR events), **power state transitions** (sleep/wake/hibernate), and the **boot/shutdown sequence** to distinguish clean restarts from dirty ones. If you're connected via **Remote Desktop**, it warns you that your "missing windows" might just be on a different session.
 
 For the full list of event IDs, providers, manual lookup steps, and how to add your own checks, see [docs/event-reference.md](docs/event-reference.md).
 
@@ -60,10 +51,7 @@ For the full list of event IDs, providers, manual lookup steps, and how to add y
 
 ```bash
 # Why did my PC restart? (default command)
-wtf-restarted
-
-# Short alias
-wtfr
+wtf-restarted   #Or the short alias: wtfr
 
 # Show restart history (last 30 days)
 wtf-restarted history
@@ -145,15 +133,12 @@ pip install -e ".[dev]"
 
 ## Roadmap
 
-- [ ] VHS terminal demo GIF ([charmbracelet/vhs](https://github.com/charmbracelet/vhs))
 - [ ] AI-enhanced diagnosis (Claude Code, Codex integration)
 - [ ] Auto-install helper for kd.exe / Windows SDK
+- [ ] Cross-platform support (Linux, macOS)
 - [ ] mcp-windbg integration for structured dump analysis
-- [ ] Cross-platform support (Linux via journalctl/dmesg, macOS via log show)
-- [ ] Port exhaustion detection
-- [ ] Integration with [Stop-Windows-Restarting](https://github.com/djdarcy/Stop-Windows-Restarting)
-- [ ] Export to HTML report
-- [ ] Standalone .exe distribution (PyInstaller)
+
+See [ROADMAP.md](ROADMAP.md) for the full phased plan, or track progress on [issue #3](https://github.com/djdarcy/wtf-restarted/issues/3).
 
 ## Related Projects
 
@@ -172,4 +157,9 @@ Like the project?
 
 wtf-restarted, Copyright (C) 2026 Dustin Darcy
 
-This project is licensed under the GNU General Public License v3.0 -- see [LICENSE](LICENSE) for details.
+This project is dual-licensed:
+
+- **Open source**: [GNU Affero General Public License v3.0](https://www.gnu.org/licenses/agpl-3.0.html) (AGPL-3.0) -- see [LICENSE](LICENSE)
+- **Commercial**: Contact [djdarcy](https://github.com/djdarcy) for commercial licensing if AGPL terms don't fit your use case
+
+The AGPL is identical to GPL v3, with one addition: if you run a modified version of this software as a network service, you must make your source code available to users of that service. This ensures improvements to the diagnostic engine benefit everyone. Individual and self-hosted use is unaffected.

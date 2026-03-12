@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Install git hooks for teeclip project
+# Install git hooks for wtf-restarted project
 #
 
 set -e
@@ -12,7 +12,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}teeclip Git Hook Installer${NC}"
+echo -e "${BLUE}wtf-restarted Git Hook Installer${NC}"
 echo "=========================="
 echo ""
 

@@ -15,7 +15,7 @@ Tracking issue: [#3](https://github.com/djdarcy/wtf-restarted/issues/3)
 - [x] `_NT_SYMBOL_PATH` auto-detection
 - [x] CI/CD pipeline (GitHub Actions, 3 OS x 4 Python versions)
 - [x] GitHub traffic tracking (ghtraf)
-- [ ] VHS terminal demo GIF for README ([#5](https://github.com/djdarcy/wtf-restarted/issues/5))
+- [x] VHS terminal demo GIF for README ([#5](https://github.com/djdarcy/wtf-restarted/issues/5))
 - [ ] PyPI publication (v0.1.0a1)
 - [ ] Enable GitHub Pages for stats dashboard
 

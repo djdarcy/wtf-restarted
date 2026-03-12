@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Manual version update script for teeclip
+# Manual version update script for wtf-restarted
 # Updates version string without requiring a commit
 # Useful for testing and manual version synchronization
 #
