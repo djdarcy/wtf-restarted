@@ -32,6 +32,15 @@ That's it. You'll see something like:
   <br>
   <sub><a href="docs/images/demo.jpg">Static screenshot</a> if the GIF doesn't load</sub>
 </p>
+## Features
+
+- **Plain-language verdicts**: No event IDs to decode -- just "Windows Update restarted your PC" or "BSOD caused by nvlddmkm.sys"
+- **Restart history**: See patterns over time (is your PC crashing every week?)
+- **Surrounding events**: Shows what happened in the minutes before a restart for context
+- **RDP awareness**: Warns if you're in a Remote Desktop session and your "missing windows" might just be on a different session
+- **Crash dump analysis**: If `kd.exe` (Windows SDK Debugger) is installed, extracts bugcheck code, faulting module, and failure bucket from crash dumps
+- **JSON output**: Pipe to `jq`, save to file, or feed to AI tools for deeper analysis
+- **Zero mandatory dependencies**: Core analysis uses only PowerShell (built into Windows). The Python CLI adds Rich for pretty output.
 
 ## What It Checks
 
@@ -85,16 +94,6 @@ For detailed parameter descriptions, defaults, and guidance on when to adjust ea
 | **MIXED SIGNALS** | Magenta | Both dirty shutdown and restart initiator found |
 | **CLEAN RESTART** | Green | Normal, expected restart |
 
-## Features
-
-- **Plain-language verdicts**: No event IDs to decode -- just "Windows Update restarted your PC" or "BSOD caused by nvlddmkm.sys"
-- **Restart history**: See patterns over time (is your PC crashing every week?)
-- **Surrounding events**: Shows what happened in the minutes before a restart for context
-- **RDP awareness**: Warns if you're in a Remote Desktop session and your "missing windows" might just be on a different session
-- **Crash dump analysis**: If `kd.exe` (Windows SDK Debugger) is installed, extracts bugcheck code, faulting module, and failure bucket from crash dumps
-- **JSON output**: Pipe to `jq`, save to file, or feed to AI tools for deeper analysis
-- **Zero mandatory dependencies**: Core analysis uses only PowerShell (built into Windows). The Python CLI adds Rich for pretty output.
-
 ## Using the PowerShell Scripts Directly
 
 The investigation engine is a standalone PowerShell script that works without Python. If you prefer PowerShell or want to integrate restart diagnosis into your own scripts:
@@ -125,11 +124,13 @@ See [docs/powershell-engine.md](docs/powershell-engine.md) for the full paramete
 # From PyPI
 pip install wtf-restarted
 
-# From source
+# From source (development)
 git clone https://github.com/djdarcy/wtf-restarted.git
 cd wtf-restarted
 pip install -e ".[dev]"
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full development setup including virtual environment, test running, and project structure.
 
 ## Roadmap
 

@@ -111,14 +111,23 @@ def _render_verdict(verdict: dict, dump_analysis: dict):
     for detail in verdict.get("details", []):
         lines.append(f"  - {detail}")
 
-    # Add dump analysis summary if available
+    # Add dump analysis summary -- conditional on verdict type
     if dump_analysis.get("performed") and dump_analysis.get("bugcheck_code"):
-        lines.append("")
-        lines.append(f"Bugcheck: {dump_analysis['bugcheck_code']}")
-        if dump_analysis.get("module"):
-            lines.append(f"Faulting module: {dump_analysis['module']}")
-        if dump_analysis.get("image"):
-            lines.append(f"Driver image: {dump_analysis['image']}")
+        if vtype in ("BSOD", "MIXED_SIGNALS"):
+            # Show bugcheck details inline for crash verdicts
+            lines.append("")
+            lines.append(f"Bugcheck: {dump_analysis['bugcheck_code']}")
+            if dump_analysis.get("module"):
+                lines.append(f"Faulting module: {dump_analysis['module']}")
+            if dump_analysis.get("image"):
+                lines.append(f"Driver image: {dump_analysis['image']}")
+        else:
+            # For non-crash verdicts, just note that a dump exists
+            lines.append("")
+            lines.append(
+                "[dim]Note: Previous crash dump found "
+                "(run 'wtfr -v' for details)[/dim]"
+            )
 
     console.print(Panel(
         "\n".join(lines),
@@ -169,7 +178,7 @@ def _render_key_events(events: dict):
             console.print()
             console.print(f"[bold]{title}[/bold]")
             for e in items[:5]:
-                msg = e.get("message", "")[:200]
+                msg = e.get("message", "")
                 time = e.get("time", "")
                 console.print(f"  [{time}] {msg}")
 
@@ -241,8 +250,60 @@ def _render_context_window(context: list):
     for e in context[:15]:
         time = e.get("time", "")
         provider = e.get("provider", "")
-        msg = e.get("message", "")[:150]
+        msg = e.get("message", "")
         console.print(f"  [{time}] [dim]{provider}[/dim] {msg}")
+
+
+def render_ai_analysis(sections: dict):
+    """Render AI analysis results as a Rich panel."""
+    console.print()
+
+    if "raw" in sections:
+        # Unstructured response -- display as-is
+        console.print(Panel(
+            sections["raw"],
+            title="AI Analysis",
+            border_style="bright_blue",
+        ))
+        return
+
+    lines = []
+
+    if sections.get("what_happened"):
+        lines.append("[bold]What Happened[/bold]")
+        lines.append(sections["what_happened"])
+        lines.append("")
+
+    if sections.get("why"):
+        lines.append("[bold]Why[/bold]")
+        lines.append(sections["why"])
+        lines.append("")
+
+    if sections.get("what_to_do"):
+        lines.append("[bold]What To Do[/bold]")
+        lines.append(sections["what_to_do"])
+        lines.append("")
+
+    if sections.get("confidence"):
+        confidence = sections["confidence"]
+        # Color the confidence level
+        if confidence.lower().startswith("high"):
+            lines.append(f"[bold]Confidence:[/bold] [green]{confidence}[/green]")
+        elif confidence.lower().startswith("low"):
+            lines.append(f"[bold]Confidence:[/bold] [red]{confidence}[/red]")
+        else:
+            lines.append(f"[bold]Confidence:[/bold] [yellow]{confidence}[/yellow]")
+
+    if lines:
+        console.print(Panel(
+            "\n".join(lines),
+            title="AI Analysis",
+            border_style="bright_blue",
+        ))
+    else:
+        console.print("[dim]AI analysis returned no structured content.[/dim]")
+
+    console.print()
 
 
 def render_history(history: list, days: int = 30):
@@ -275,7 +336,7 @@ def render_history(history: list, days: int = 30):
         etype = entry.get("type", "UNKNOWN")
         style = type_styles.get(etype, "white")
         time = entry.get("time", "")
-        msg = entry.get("message", "")[:80]
+        msg = entry.get("message", "")[:200]
 
         table.add_row(
             time,

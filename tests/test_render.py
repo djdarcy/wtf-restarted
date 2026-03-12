@@ -7,6 +7,7 @@ from rich.console import Console
 from wtf_restarted.output.render import (
     render_diagnosis,
     render_history,
+    render_ai_analysis,
     VERDICT_STYLES,
 )
 
@@ -80,6 +81,49 @@ class TestRenderHistory:
     def test_empty_history(self):
         output = _capture_render(render_history, [])
         assert "No restart events" in output
+
+
+class TestRenderAIAnalysis:
+    """Smoke tests for AI analysis rendering."""
+
+    def test_structured_response(self):
+        sections = {
+            "what_happened": "Windows Update restarted your PC.",
+            "why": "KB5079473 required a reboot.",
+            "what_to_do": "1. No action needed.",
+            "confidence": "High -- clear evidence.",
+        }
+        output = _capture_render(render_ai_analysis, sections)
+        assert "AI Analysis" in output
+        assert "What Happened" in output
+        assert "Windows Update" in output
+        assert "High" in output
+
+    def test_unstructured_response(self):
+        sections = {"raw": "Your PC restarted due to a Windows Update."}
+        output = _capture_render(render_ai_analysis, sections)
+        assert "AI Analysis" in output
+        assert "Windows Update" in output
+
+    def test_empty_sections(self):
+        output = _capture_render(render_ai_analysis, {})
+        assert "no structured content" in output
+
+    def test_confidence_color_high(self):
+        sections = {"confidence": "High -- lots of evidence"}
+        output = _capture_render(render_ai_analysis, sections)
+        assert "High" in output
+
+    def test_confidence_color_low(self):
+        sections = {"confidence": "Low -- insufficient data"}
+        output = _capture_render(render_ai_analysis, sections)
+        assert "Low" in output
+
+    def test_partial_sections(self):
+        sections = {"what_happened": "BSOD from faulty driver."}
+        output = _capture_render(render_ai_analysis, sections)
+        assert "AI Analysis" in output
+        assert "BSOD" in output
 
 
 class TestVerdictStyles:

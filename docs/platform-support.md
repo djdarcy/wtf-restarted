@@ -84,7 +84,7 @@ flowchart TD
     end
 
     subgraph WINSRC ["Windows Sources"]
-        D --> D1["investigate.ps1\nhistory.ps1"]
+        D --> D1["investigate.ps1<br/>history.ps1"]
         D1 --> D2["Get-WinEvent"]
         D1 --> D3["Win32_OperatingSystem"]
         D1 --> D4["kd.exe"]

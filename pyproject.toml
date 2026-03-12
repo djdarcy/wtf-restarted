@@ -47,9 +47,9 @@ ai = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/DazzleTools/wtf-restarted"
-Repository = "https://github.com/DazzleTools/wtf-restarted"
-Issues = "https://github.com/DazzleTools/wtf-restarted/issues"
+Homepage = "https://github.com/djdarcy/wtf-restarted"
+Repository = "https://github.com/djdarcy/wtf-restarted"
+Issues = "https://github.com/djdarcy/wtf-restarted/issues"
 
 [project.scripts]
 wtf-restarted = "wtf_restarted.cli:main"
@@ -63,7 +63,7 @@ where = ["."]
 include = ["wtf_restarted", "wtf_restarted.*"]
 
 [tool.setuptools.package-data]
-wtf_restarted = ["ps1/*.ps1"]
+wtf_restarted = ["ps1/*.ps1", "ai/prompts/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

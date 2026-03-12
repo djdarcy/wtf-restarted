@@ -38,10 +38,10 @@ flowchart TD
     C -->|"subprocess: powershell -File"| E
 
     subgraph WIN ["Windows APIs"]
-        F["Get-WinEvent\n(System + Application logs)"]
-        G["Get-CimInstance\nWin32_OperatingSystem"]
-        H["query session\n(RDP detection)"]
-        I["kd.exe\n(crash dump analysis)"]
+        F["Get-WinEvent<br/>(System + Application logs)"]
+        G["Get-CimInstance<br/>Win32_OperatingSystem"]
+        H["query session<br/>(RDP detection)"]
+        I["kd.exe<br/>(crash dump analysis)"]
     end
 
     D --> F
@@ -54,8 +54,8 @@ flowchart TD
     E -->|JSON| C
 
     subgraph OUT ["Output"]
-        J["Rich tables + panels\n(terminal)"]
-        K["Raw JSON\n(--json flag)"]
+        J["Rich tables + panels<br/>(terminal)"]
+        K["Raw JSON<br/>(--json flag)"]
     end
 
     B --> J

@@ -160,8 +160,8 @@ $shutdown = Get-WinEvent -FilterHashtable @{LogName='System'; Id=@(1074,1076); S
 $events.shutdown_initiator = @()
 if ($shutdown) {
     foreach ($e in $shutdown | Select-Object -First 5) {
-        $evidence.initiated_by = (Truncate-Message $e.Message 300)
-        $events.shutdown_initiator += Format-Event $e 300
+        $evidence.initiated_by = (Truncate-Message $e.Message 1000)
+        $events.shutdown_initiator += Format-Event $e 1000
     }
 }
 
@@ -284,7 +284,7 @@ if ($bootShutdown) {
             6009 { "OS_VERSION" }
             default { "UNKNOWN" }
         }
-        $formatted = Format-Event $e 150
+        $formatted = Format-Event $e 500
         $formatted.label = $label
         $events.boot_sequence += $formatted
     }
@@ -368,12 +368,60 @@ if ($evidence.crash_dump_exists -and $evidence.dirty_shutdown) {
     }
 } elseif ($evidence.initiated_by -and -not $evidence.dirty_shutdown) {
     $verdict.type = "INITIATED_RESTART"
-    $verdict.summary = "A process or user requested the restart."
-    if ($evidence.windows_update) {
-        $verdict.summary = "Windows Update triggered the restart."
+
+    # Parse Event 1074 message for structured fields
+    $msg1074 = $evidence.initiated_by
+    $initiatorProcess = ""
+    $initiatorUser = ""
+    $initiatorReason = ""
+    $reasonCode = ""
+    $shutdownType = ""
+
+    if ($msg1074 -match 'The process (.+?) \(.+?\) has initiated the') {
+        $initiatorProcess = $Matches[1].Trim()
+    }
+    if ($msg1074 -match 'on behalf of user (.+?) for the following reason:') {
+        $initiatorUser = $Matches[1].Trim()
+    }
+    if ($msg1074 -match 'for the following reason:\s*(.+?)(?:\s*Reason Code:|$)') {
+        $initiatorReason = $Matches[1].Trim()
+    }
+    if ($msg1074 -match 'Reason Code:\s*(0x[0-9A-Fa-f]+)') {
+        $reasonCode = $Matches[1]
+    }
+    if ($msg1074 -match 'Shutdown Type:\s*(\S+)') {
+        $shutdownType = $Matches[1].Trim()
+    }
+
+    # Build readable summary
+    $processName = if ($initiatorProcess) {
+        Split-Path $initiatorProcess -Leaf
+    } else { "" }
+
+    if ($evidence.windows_update -or $initiatorProcess -match 'TrustedInstaller') {
+        if ($processName) {
+            $verdict.summary = "Windows Update ($processName) restarted your PC."
+        } else {
+            $verdict.summary = "Windows Update triggered the restart."
+        }
         $verdict.details += "Windows Update activity detected near restart time."
+    } elseif ($processName) {
+        $verdict.summary = "$processName requested the restart."
+    } else {
+        $verdict.summary = "A process or user requested the restart."
+    }
+
+    if ($initiatorReason) {
+        $verdict.details += "Reason: $initiatorReason"
     }
     $verdict.details += "Shutdown initiator found in Event 1074."
+
+    # Structured fields for downstream consumers (AI, JSON)
+    $verdict.initiator_process = $initiatorProcess
+    $verdict.initiator_user = $initiatorUser
+    $verdict.initiator_reason = $initiatorReason
+    $verdict.reason_code = $reasonCode
+    $verdict.shutdown_type = $shutdownType
 } elseif ($evidence.dirty_shutdown -and $evidence.initiated_by) {
     $verdict.type = "MIXED_SIGNALS"
     $verdict.summary = "Both dirty shutdown and restart initiator found."
