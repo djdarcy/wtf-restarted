@@ -22,18 +22,38 @@ These apply to the `diagnose` command (the default).
 
 | Flag | Short | Type | Default | Description |
 |------|-------|------|---------|-------------|
-| `--hours N` | `-H N` | int | 48 | How far back to search event logs. Increase if the restart happened more than two days ago. |
+| `--hours N` | `-H N` | int | 48 | How far back to search event logs. When omitted, auto-extends to cover the last restart. When explicit, uses a strict time window. |
 | `--skip-dump` | | flag | off | Skip crash dump analysis. Useful when you want a quick answer and don't need BSOD details, or when `kd.exe` is slow to download symbols. |
 | `--context-minutes N` | | int | 10 | How many minutes of surrounding events to show before the restart. Increase to see more of what was happening leading up to the event. |
 
+#### How `--hours` works
+
+**Default behavior (no `--hours` flag):** The tool automatically extends the lookback window to cover the most recent restart, even if it happened more than 48 hours ago. This ensures you always get a verdict. If the window was extended, a note tells you:
+
+```
+Note: No restart events in last 48h -- looked back 72h to cover last restart.
+      Use --hours 48 for strict 48h window.
+```
+
+**Explicit `--hours N`:** Uses a strict N-hour window. If the restart falls outside it, the tool reports what it found (which may be nothing) and suggests a wider window:
+
+```
+Note: Last restart was ~72h ago, outside your --hours 24 window.
+      Run without --hours or use --hours 73 to include it.
+```
+
+This is useful for monitoring scripts, scheduled health checks, or when you specifically want to know "did anything happen in the last N hours?"
+
 #### When to adjust `--hours`
 
-The default 48-hour window catches most cases. Increase it when:
-- You were away for a long weekend (`--hours 96`)
+Most users never need to -- the default auto-extends to find the restart. Use explicit `--hours` when:
+- You want a strict time-slice: "what happened in the last 8 hours?" (`--hours 8`)
+- Scripting or CI/CD: a strict window avoids false positives from old restarts
 - Investigating a pattern over the past week (`--hours 168`)
-- The machine has been running and you want to check a restart from several days ago
 
 Note that larger windows mean more event log entries to scan, so queries take slightly longer.
+
+Future enhancements (`--days`, `--time` date ranges, targeted investigation) are tracked in [Issue #19](https://github.com/djdarcy/wtf-restarted/issues/19).
 
 #### When to use `--skip-dump`
 
@@ -102,6 +122,92 @@ Verbose mode shows raw event log entries for every category, even when no releva
 - Confirming the tool checked everything (not just what it reported)
 - Seeing low-priority events that didn't affect the verdict
 - Debugging the tool's behavior
+
+### AI Analysis Parameters
+
+These apply to the `diagnose` command and enable opt-in AI-powered analysis.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--ai [BACKEND]` | optional string | claude | Enable AI analysis after standard output. Backend choices: `claude`, `codex`, `prompt-only`. |
+| `--ai-only [BACKEND]` | optional string | claude | Show only AI analysis, suppress standard diagnostic output. |
+| `--ai-verbose` | flag | off | Stream AI response in real-time instead of waiting for completion. |
+
+```bash
+# AI analysis with Claude Code CLI (default backend)
+wtf-restarted --ai
+
+# AI analysis with a specific backend
+wtf-restarted --ai codex
+
+# Save prompt to file for manual use with any AI tool
+wtf-restarted --ai prompt-only
+
+# Only show the AI analysis, skip the standard tables/verdict
+wtf-restarted --ai-only
+
+# Combine with JSON output
+wtf-restarted --json --ai
+```
+
+#### Backends
+
+| Backend | Requires | What it does |
+|---------|----------|-------------|
+| `claude` (default) | [Claude Code CLI](https://claude.ai/claude-code) installed | Invokes Claude via subprocess, returns structured analysis |
+| `codex` | Codex CLI installed | *(planned -- not yet implemented)* |
+| `prompt-only` | Nothing | Saves the full diagnostic prompt to `~/.wtf-restarted/ai/` as a timestamped `.md` file. Paste it into any AI tool manually. |
+
+#### How `--ai` works
+
+1. Standard investigation runs normally (event logs, crash dumps, verdict)
+2. Results are serialized to JSON and embedded in a diagnostic prompt template
+3. The prompt is sent to the selected backend (or saved to file for `prompt-only`)
+4. The AI response is parsed into four sections: **What Happened**, **Why**, **What To Do**, **Confidence**
+5. Results display in a Rich panel with color-coded confidence (green = high, yellow = medium, red = low)
+
+If the backend is unavailable (e.g., Claude Code CLI not installed), the tool prints a message and continues with standard output only. The `prompt-only` backend is always available and works as a free-tier option.
+
+#### `--ai-only` vs `--ai`
+
+- `--ai`: shows standard diagnostic output first, then appends AI analysis
+- `--ai-only`: suppresses standard output entirely -- only the AI panel is shown
+- `--ai-only` implies `--ai` with the same backend
+
+#### JSON + AI
+
+When `--json` and `--ai` are combined, the JSON output includes an `ai_analysis` key:
+
+```json
+{
+  "system": { ... },
+  "evidence": { ... },
+  "verdict": { ... },
+  "ai_analysis": {
+    "success": true,
+    "backend": "claude",
+    "sections": {
+      "what_happened": "...",
+      "why": "...",
+      "what_to_do": "...",
+      "confidence": "..."
+    },
+    "error": null
+  }
+}
+```
+
+#### Prompt files
+
+The `prompt-only` backend saves prompts to `~/.wtf-restarted/ai/` with timestamped filenames:
+
+```
+~/.wtf-restarted/ai/
+  prompt_2026-03-12_18-30-45.md
+  prompt_2026-03-12_19-15-22.md
+```
+
+These files contain the complete diagnostic context and can be pasted into ChatGPT, Claude, or any AI assistant. The output includes a link to a [recommended GPT](https://chatgpt.com/g/g-Pn1omABcF-devop-it-scripting-guru) configured for IT diagnostics.
 
 ### Info
 
@@ -225,12 +331,16 @@ How the Python CLI flags map to the underlying PowerShell parameters:
 
 | Python CLI | PowerShell (investigate.ps1) | PowerShell (history.ps1) |
 |-----------|------------------------------|--------------------------|
-| `--hours N` | `-LookbackHours N` | -- |
+| `--hours N` | `-LookbackHours N -StrictLookback` | -- |
+| *(default, no --hours)* | `-LookbackHours 48` *(boot-anchored)* | -- |
 | `--skip-dump` | `-SkipDump` | -- |
 | `--context-minutes N` | `-ContextMinutes N` | -- |
 | `--days N` | -- | `-Days N` |
 | `--json` | `-JsonOnly` | *(always JSON)* |
 | `--verbose` | *(Python-side only)* | -- |
+| `--ai [BACKEND]` | *(Python-side only)* | -- |
+| `--ai-only [BACKEND]` | *(Python-side only)* | -- |
+| `--ai-verbose` | *(Python-side only)* | -- |
 | -- | `-DumpFile "path"` | -- |
 | -- | `-SymbolPath "path"` | -- |
 

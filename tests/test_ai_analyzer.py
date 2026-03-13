@@ -9,6 +9,8 @@ from wtf_restarted.ai.analyzer import (
     analyze,
     check_available,
     get_backend,
+    _cache_stable_fields,
+    _cache_key,
 )
 
 
@@ -149,3 +151,153 @@ class TestAnalyze:
         assert not result["success"]  # prompt-only saves prompt, doesn't invoke AI
         assert "Prompt saved to:" in result["error"]
         assert ".wtf-restarted" in result["error"]
+
+
+# -- Results with events for fingerprint testing --
+RESULTS_WITH_EVENTS = {
+    **SAMPLE_RESULTS,
+    "events": {
+        "shutdown_initiator": [
+            {"time": "2026-03-11 04:41:00", "message": "Restart requested"},
+        ],
+        "kernel_power_41": [],
+        "event_6008": [],
+        "bugcheck": [],
+        "whea": [],
+        "gpu_events": [],
+        "context_window": [
+            {"time": "2026-03-11 04:40:55", "message": "Some context event"},
+        ],
+        "windows_update": [
+            {"time": "2026-03-11 04:30:00", "message": "KB5079473"},
+        ],
+    },
+}
+
+
+class TestCacheStableFields:
+    def test_includes_verdict_type(self):
+        fp = _cache_stable_fields(SAMPLE_RESULTS)
+        assert fp["verdict_type"] == "INITIATED_RESTART"
+
+    def test_counts_events_per_category(self):
+        fp = _cache_stable_fields(RESULTS_WITH_EVENTS)
+        assert fp["shutdown_initiator_count"] == 1
+        assert fp["kernel_power_41_count"] == 0
+        assert fp["bugcheck_count"] == 0
+
+    def test_sorts_event_timestamps(self):
+        results = {
+            **SAMPLE_RESULTS,
+            "events": {
+                "bugcheck": [
+                    {"time": "2026-03-11 05:00:00"},
+                    {"time": "2026-03-11 03:00:00"},
+                ],
+            },
+        }
+        fp = _cache_stable_fields(results)
+        assert fp["bugcheck_times"] == [
+            "2026-03-11 03:00:00",
+            "2026-03-11 05:00:00",
+        ]
+
+    def test_excludes_context_window(self):
+        fp = _cache_stable_fields(RESULTS_WITH_EVENTS)
+        assert "context_window_count" not in fp
+        assert "context_window_times" not in fp
+
+    def test_excludes_windows_update(self):
+        fp = _cache_stable_fields(RESULTS_WITH_EVENTS)
+        assert "windows_update_count" not in fp
+
+    def test_includes_dump_analysis_when_performed(self):
+        results = {
+            **SAMPLE_RESULTS,
+            "dump_analysis": {
+                "performed": True,
+                "bugcheck_code": "0x0000007E",
+                "module": "nt",
+                "bucket": "AV_nt!func",
+            },
+        }
+        fp = _cache_stable_fields(results)
+        assert fp["dump_bugcheck"] == "0x0000007E"
+        assert fp["dump_module"] == "nt"
+        assert fp["dump_bucket"] == "AV_nt!func"
+
+    def test_marks_dump_not_performed(self):
+        fp = _cache_stable_fields(SAMPLE_RESULTS)
+        assert fp["dump_performed"] is False
+        assert "dump_bugcheck" not in fp
+
+    def test_evidence_flags_as_booleans(self):
+        fp = _cache_stable_fields(SAMPLE_RESULTS)
+        ev = fp["evidence"]
+        assert ev["dirty_shutdown"] is False
+        assert ev["bugcheck"] is False
+        assert ev["crash_dump_exists"] is False
+
+    def test_evidence_coerces_truthy_strings(self):
+        results = {
+            **SAMPLE_RESULTS,
+            "evidence": {
+                "dirty_shutdown": "YES",
+                "bugcheck": "Event 1001",
+                "whea_error": "",
+                "crash_dump_exists": True,
+            },
+        }
+        fp = _cache_stable_fields(results)
+        ev = fp["evidence"]
+        assert ev["dirty_shutdown"] is True
+        assert ev["bugcheck"] is True
+        assert ev["whea_error"] is False
+        assert ev["crash_dump_exists"] is True
+
+
+class TestCacheKey:
+    def test_same_events_same_key(self):
+        """Different --hours finding same events should produce same cache key."""
+        key1 = _cache_key(RESULTS_WITH_EVENTS, "claude")
+        key2 = _cache_key(RESULTS_WITH_EVENTS, "claude")
+        assert key1 == key2
+
+    def test_different_backend_different_key(self):
+        key_claude = _cache_key(SAMPLE_RESULTS, "claude")
+        key_prompt = _cache_key(SAMPLE_RESULTS, "prompt-only")
+        assert key_claude != key_prompt
+
+    def test_different_events_different_key(self):
+        results_extra = {
+            **RESULTS_WITH_EVENTS,
+            "events": {
+                **RESULTS_WITH_EVENTS["events"],
+                "bugcheck": [{"time": "2026-03-11 04:41:05"}],
+            },
+        }
+        key1 = _cache_key(RESULTS_WITH_EVENTS, "claude")
+        key2 = _cache_key(results_extra, "claude")
+        assert key1 != key2
+
+    def test_context_window_changes_ignored(self):
+        """Changing context_window events should NOT change the cache key."""
+        results_more_context = {
+            **RESULTS_WITH_EVENTS,
+            "events": {
+                **RESULTS_WITH_EVENTS["events"],
+                "context_window": [
+                    {"time": "2026-03-11 04:40:55", "message": "event1"},
+                    {"time": "2026-03-11 04:40:50", "message": "event2"},
+                    {"time": "2026-03-11 04:40:45", "message": "event3"},
+                ],
+            },
+        }
+        key1 = _cache_key(RESULTS_WITH_EVENTS, "claude")
+        key2 = _cache_key(results_more_context, "claude")
+        assert key1 == key2
+
+    def test_key_is_hex_string(self):
+        key = _cache_key(SAMPLE_RESULTS, "claude")
+        assert len(key) == 16
+        assert all(c in "0123456789abcdef" for c in key)

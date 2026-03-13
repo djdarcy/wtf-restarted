@@ -96,6 +96,7 @@ The script lives at `wtf_restarted/ps1/investigate.ps1` inside the installed pac
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `-LookbackHours` | int | 48 | How far back to search event logs |
+| `-StrictLookback` | switch | off | Use exact lookback window (don't auto-extend to cover last restart) |
 | `-ContextMinutes` | int | 10 | Minutes of surrounding events to capture before the restart |
 | `-SkipDump` | switch | off | Skip crash dump analysis (faster) |
 | `-JsonOnly` | switch | off | Output only compact JSON (no human-readable text) |
@@ -178,6 +179,9 @@ The JSON output has this structure (all fields are always present):
     "uptime_seconds": 43200,
     "uptime_display": "0.12:00:00",
     "lookback_hours": 48,
+    "lookback_extended": false,
+    "lookback_actual_hours": 48.0,
+    "strict_lookback": false,
     "os_version": "Microsoft Windows NT 10.0.26200.0",
     "computer_name": "HAPPYBOX"
   },

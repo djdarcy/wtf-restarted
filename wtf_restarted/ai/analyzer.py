@@ -2,14 +2,23 @@
 
 Orchestrates prompt building, backend invocation, and response parsing
 to produce AI-powered analysis of restart evidence.
+
+Includes response caching to avoid redundant API calls when the same
+investigation data is analyzed multiple times (Issue #18).
 """
 
+import hashlib
 import json
 import re
+import time
 from pathlib import Path
 
 # Prompt template lives alongside this module
 _PROMPT_DIR = Path(__file__).parent / "prompts"
+
+# Cache directory and TTL
+_CACHE_DIR = Path.home() / ".wtf-restarted" / "cache"
+_CACHE_TTL_SECONDS = 24 * 60 * 60  # 24 hours
 
 # Available backends (lazy-loaded)
 _BACKENDS = {
@@ -89,7 +98,104 @@ def _clean_for_prompt(results):
     return cleaned
 
 
-def analyze(results, backend_name="claude", verbose=False, timeout=120):
+def _cache_stable_fields(results):
+    """Build a semantic fingerprint of investigation findings for cache key.
+
+    Uses event counts + sorted timestamps as event identity rather than
+    raw event payloads. This means --hours 60 and --hours 80 produce the
+    same cache key when they find the same events (Issue #20).
+
+    Excludes context_window, windows_update, boot_sequence, and
+    app_crashes (supporting context that doesn't drive the diagnosis).
+    """
+    fingerprint = {}
+
+    # Verdict type is the primary classifier
+    fingerprint["verdict_type"] = results.get("verdict", {}).get("type")
+
+    # Count and identify events by diagnosis-relevant category
+    events = results.get("events", {})
+    for category in ("kernel_power_41", "event_6008", "shutdown_initiator",
+                     "bugcheck", "whea", "gpu_events"):
+        items = events.get(category, [])
+        fingerprint[f"{category}_count"] = len(items)
+        fingerprint[f"{category}_times"] = sorted(
+            e.get("time", "") for e in items
+        )
+
+    # Dump analysis findings (not paths, just results)
+    da = results.get("dump_analysis", {})
+    if da.get("performed"):
+        fingerprint["dump_bugcheck"] = da.get("bugcheck_code")
+        fingerprint["dump_module"] = da.get("module")
+        fingerprint["dump_bucket"] = da.get("bucket")
+    else:
+        fingerprint["dump_performed"] = False
+
+    # Evidence flags as booleans (not strings)
+    evidence = results.get("evidence", {})
+    fingerprint["evidence"] = {
+        "dirty_shutdown": bool(evidence.get("dirty_shutdown")),
+        "bugcheck": bool(evidence.get("bugcheck")),
+        "whea_error": bool(evidence.get("whea_error")),
+        "crash_dump_exists": bool(evidence.get("crash_dump_exists")),
+    }
+
+    return fingerprint
+
+
+def _cache_key(results, backend_name):
+    """Generate a cache key from investigation results and backend.
+
+    Hashes only stable event-driven fields so that two runs with the
+    same restart events produce the same key, even if uptime or other
+    ephemeral system state has changed.
+    """
+    stable = _cache_stable_fields(results)
+    payload = json.dumps(stable, sort_keys=True, default=str) + "\n" + backend_name
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
+
+def _cache_read(cache_key, backend_name):
+    """Try to read a cached AI response. Returns the result dict or None."""
+    cache_file = _CACHE_DIR / f"ai_{backend_name}_{cache_key}.json"
+    if not cache_file.exists():
+        return None
+    try:
+        data = json.loads(cache_file.read_text(encoding="utf-8"))
+        # Check TTL
+        cached_at = data.get("cached_at", 0)
+        if time.time() - cached_at > _CACHE_TTL_SECONDS:
+            cache_file.unlink(missing_ok=True)
+            return None
+        result = data.get("result")
+        if result:
+            result["cached"] = True
+            result["cached_at"] = cached_at
+        return result
+    except (json.JSONDecodeError, KeyError, OSError):
+        return None
+
+
+def _cache_write(cache_key, backend_name, result):
+    """Write an AI response to the cache."""
+    try:
+        _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        cache_file = _CACHE_DIR / f"ai_{backend_name}_{cache_key}.json"
+        data = {
+            "cached_at": time.time(),
+            "backend": backend_name,
+            "result": result,
+        }
+        cache_file.write_text(
+            json.dumps(data, indent=2, default=str),
+            encoding="utf-8",
+        )
+    except OSError:
+        pass  # Cache write failure is non-fatal
+
+
+def analyze(results, backend_name="claude", verbose=False, timeout=120, refresh=False):
     """
     Run AI analysis on investigation results.
 
@@ -106,6 +212,16 @@ def analyze(results, backend_name="claude", verbose=False, timeout=120):
             sections: dict (parsed sections: what_happened, why, what_to_do, confidence)
             error: str or None
     """
+    # prompt-only backend is never cached (it saves a file, not an API call)
+    skip_cache = backend_name == "prompt-only"
+
+    # Check cache first (unless --ai-refresh or prompt-only)
+    if not refresh and not skip_cache:
+        key = _cache_key(results, backend_name)
+        cached = _cache_read(key, backend_name)
+        if cached:
+            return cached
+
     backend = get_backend(backend_name)
 
     if not backend.is_available():
@@ -131,12 +247,18 @@ def analyze(results, backend_name="claude", verbose=False, timeout=120):
 
     sections = parse_response(output)
 
-    return {
+    result = {
         "success": True,
         "raw_response": output,
         "sections": sections,
         "error": None,
     }
+
+    # Cache successful results
+    if not skip_cache:
+        _cache_write(key, backend_name, result)
+
+    return result
 
 
 def parse_response(text):

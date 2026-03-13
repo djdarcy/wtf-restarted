@@ -85,7 +85,7 @@ def cli_runner(monkeypatch):
                 monkeypatch.setattr("wtf_restarted.ai.analyzer.check_available",
                                     lambda b: ai_available)
                 monkeypatch.setattr("wtf_restarted.ai.analyzer.analyze",
-                    lambda results, backend_name="claude", verbose=False, timeout=120: ai_result)
+                    lambda results, backend_name="claude", verbose=False, timeout=120, refresh=False: ai_result)
             elif not ai_available:
                 # Just mock check_available to return False
                 monkeypatch.setattr("wtf_restarted.ai.analyzer.check_available",

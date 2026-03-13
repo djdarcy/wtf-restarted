@@ -13,7 +13,13 @@ from wtf_restarted.output.render import (
 
 
 def _capture_render(func, *args, **kwargs):
-    """Capture Rich output to a string."""
+    """Capture Rich output to a string.
+
+    For render_diagnosis, automatically disables interactive paging
+    to prevent tests from blocking on keypress input.
+    """
+    if func.__name__ == "render_diagnosis":
+        kwargs.setdefault("interactive", False)
     buf = StringIO()
     with patch("wtf_restarted.output.render.console", Console(file=buf, force_terminal=True)):
         func(*args, **kwargs)

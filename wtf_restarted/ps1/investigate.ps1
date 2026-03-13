@@ -27,6 +27,7 @@
 
 param(
     [int]$LookbackHours = 48,
+    [switch]$StrictLookback,
     [string]$DumpFile = "",
     [switch]$SkipDump,
     [switch]$JsonOnly,
@@ -73,12 +74,26 @@ $lookback = $now.AddHours(-$LookbackHours)
 $bootTime = (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
 $uptime = $now - $bootTime
 
+# Boot-anchored lookback for restart-related event queries.
+# When StrictLookback is set (user explicitly passed --hours), respect their
+# exact time window. Otherwise, extend back to cover the most recent restart.
+if ($StrictLookback) {
+    $restartLookback = $lookback
+} else {
+    $restartLookback = @($lookback, $bootTime.AddMinutes(-10)) | Sort-Object | Select-Object -First 1
+}
+$lookbackExtended = $restartLookback -lt $lookback
+$actualLookbackHours = [Math]::Round(($now - $restartLookback).TotalHours, 1)
+
 $systemInfo = @{
     current_time = $now.ToString("yyyy-MM-dd HH:mm:ss")
     boot_time = $bootTime.ToString("yyyy-MM-dd HH:mm:ss")
     uptime_seconds = [int]$uptime.TotalSeconds
     uptime_display = $uptime.ToString('d\.hh\:mm\:ss')
     lookback_hours = $LookbackHours
+    lookback_extended = $lookbackExtended
+    lookback_actual_hours = $actualLookbackHours
+    strict_lookback = [bool]$StrictLookback
     os_version = [System.Environment]::OSVersion.VersionString
     computer_name = $env:COMPUTERNAME
 }
@@ -136,7 +151,7 @@ $evidence = @{
 $events = @{}
 
 # --- 1. Kernel-Power Event 41 (unexpected shutdown) ---
-$kp41 = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Microsoft-Windows-Kernel-Power'; Id=41; StartTime=$lookback} -ErrorAction SilentlyContinue
+$kp41 = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Microsoft-Windows-Kernel-Power'; Id=41; StartTime=$restartLookback} -ErrorAction SilentlyContinue
 $events.kernel_power_41 = @()
 if ($kp41) {
     $evidence.dirty_shutdown = $true
@@ -146,7 +161,7 @@ if ($kp41) {
 }
 
 # --- 2. Event 6008 (previous shutdown was unexpected) ---
-$ev6008 = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='EventLog'; Id=6008; StartTime=$lookback} -ErrorAction SilentlyContinue
+$ev6008 = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='EventLog'; Id=6008; StartTime=$restartLookback} -ErrorAction SilentlyContinue
 $events.event_6008 = @()
 if ($ev6008) {
     $evidence.dirty_shutdown = $true
@@ -156,7 +171,7 @@ if ($ev6008) {
 }
 
 # --- 3. Shutdown initiator Event 1074/1076 ---
-$shutdown = Get-WinEvent -FilterHashtable @{LogName='System'; Id=@(1074,1076); StartTime=$lookback} -ErrorAction SilentlyContinue
+$shutdown = Get-WinEvent -FilterHashtable @{LogName='System'; Id=@(1074,1076); StartTime=$restartLookback} -ErrorAction SilentlyContinue
 $events.shutdown_initiator = @()
 if ($shutdown) {
     foreach ($e in $shutdown | Select-Object -First 5) {
@@ -166,7 +181,7 @@ if ($shutdown) {
 }
 
 # --- 4. Kernel-Power Event 109 (power transitions) ---
-$kp109 = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Microsoft-Windows-Kernel-Power'; Id=109; StartTime=$lookback} -ErrorAction SilentlyContinue
+$kp109 = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Microsoft-Windows-Kernel-Power'; Id=109; StartTime=$restartLookback} -ErrorAction SilentlyContinue
 $events.power_transitions = @()
 if ($kp109) {
     foreach ($e in $kp109 | Select-Object -First 5) {
@@ -176,7 +191,7 @@ if ($kp109) {
 
 # --- 5. BugCheck events (Windows Error Reporting) ---
 $events.bugcheck = @()
-$bugchecks = Get-WinEvent -FilterHashtable @{LogName='System'; Id=1001; StartTime=$lookback} -ErrorAction SilentlyContinue |
+$bugchecks = Get-WinEvent -FilterHashtable @{LogName='System'; Id=1001; StartTime=$restartLookback} -ErrorAction SilentlyContinue |
     Where-Object { $_.Message -match "BugCheck|bugcheck|BlueScreen" }
 if ($bugchecks) {
     $evidence.bugcheck = $true
@@ -184,7 +199,7 @@ if ($bugchecks) {
         $events.bugcheck += Format-Event $e
     }
 }
-$bugchecksApp = Get-WinEvent -FilterHashtable @{LogName='Application'; ProviderName='Windows Error Reporting'; StartTime=$lookback} -ErrorAction SilentlyContinue |
+$bugchecksApp = Get-WinEvent -FilterHashtable @{LogName='Application'; ProviderName='Windows Error Reporting'; StartTime=$restartLookback} -ErrorAction SilentlyContinue |
     Where-Object { $_.Message -match "BugCheck|BlueScreen|LiveKernelEvent" }
 if ($bugchecksApp) {
     $evidence.bugcheck = $true
@@ -194,7 +209,7 @@ if ($bugchecksApp) {
 }
 
 # --- 6. WHEA hardware errors ---
-$whea = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Microsoft-Windows-WHEA-Logger'; StartTime=$lookback} -ErrorAction SilentlyContinue
+$whea = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Microsoft-Windows-WHEA-Logger'; StartTime=$restartLookback} -ErrorAction SilentlyContinue
 $events.whea = @()
 if ($whea) {
     $evidence.whea_error = $true
@@ -205,7 +220,7 @@ if ($whea) {
 
 # --- 7. Windows Update installs ---
 $events.windows_update = @()
-$wuEvents = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Microsoft-Windows-WindowsUpdateClient'; StartTime=$lookback} -ErrorAction SilentlyContinue
+$wuEvents = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Microsoft-Windows-WindowsUpdateClient'; StartTime=$restartLookback} -ErrorAction SilentlyContinue
 if ($wuEvents) {
     $rebootUpdates = $wuEvents | Where-Object { $_.Id -eq 19 -or $_.Id -eq 20 }
     if ($rebootUpdates) {
@@ -242,7 +257,7 @@ $foundDumps = @()
 
 if (Test-Path "C:\Windows\MEMORY.DMP") {
     $f = Get-Item "C:\Windows\MEMORY.DMP"
-    $isRecent = ($now - $f.LastWriteTime).TotalHours -lt $LookbackHours
+    $isRecent = $f.LastWriteTime -ge $restartLookback
     $dumpInfo.memory_dmp = @{
         path = $f.FullName
         size_mb = [Math]::Round($f.Length / 1MB, 1)
@@ -258,7 +273,7 @@ if (Test-Path "C:\Windows\MEMORY.DMP") {
 if (Test-Path "C:\Windows\Minidump") {
     $files = Get-ChildItem "C:\Windows\Minidump" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 10
     foreach ($f in $files) {
-        $isRecent = ($now - $f.LastWriteTime).TotalHours -lt $LookbackHours
+        $isRecent = $f.LastWriteTime -ge $restartLookback
         $entry = @{
             path = $f.FullName
             size_mb = [Math]::Round($f.Length / 1MB, 1)
@@ -274,7 +289,7 @@ if (Test-Path "C:\Windows\Minidump") {
 
 # --- 10. Boot/shutdown sequence ---
 $events.boot_sequence = @()
-$bootShutdown = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='EventLog'; Id=@(6005,6006,6008,6009); StartTime=$lookback} -ErrorAction SilentlyContinue
+$bootShutdown = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='EventLog'; Id=@(6005,6006,6008,6009); StartTime=$restartLookback} -ErrorAction SilentlyContinue
 if ($bootShutdown) {
     foreach ($e in $bootShutdown | Select-Object -First 15) {
         $label = switch ($e.Id) {
@@ -326,14 +341,14 @@ if ($contextEventsApp) {
 
 # --- 13. GPU driver events (TDR / display driver recovery) ---
 $events.gpu_events = @()
-$gpuEvents = Get-WinEvent -FilterHashtable @{LogName='System'; Id=@(4101,4097); StartTime=$lookback} -ErrorAction SilentlyContinue
+$gpuEvents = Get-WinEvent -FilterHashtable @{LogName='System'; Id=@(4101,4097); StartTime=$restartLookback} -ErrorAction SilentlyContinue
 if ($gpuEvents) {
     foreach ($e in $gpuEvents | Select-Object -First 5) {
         $events.gpu_events += Format-Event $e 300
     }
 }
 # nvlddmkm specific events
-$nvEvents = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='nvlddmkm'; StartTime=$lookback} -ErrorAction SilentlyContinue
+$nvEvents = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='nvlddmkm'; StartTime=$restartLookback} -ErrorAction SilentlyContinue
 if ($nvEvents) {
     foreach ($e in $nvEvents | Select-Object -First 5) {
         $events.gpu_events += Format-Event $e 300

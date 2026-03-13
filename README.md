@@ -32,6 +32,7 @@ That's it. You'll see something like:
   <br>
   <sub><a href="docs/images/demo.jpg">Static screenshot</a> if the GIF doesn't load</sub>
 </p>
+
 ## Features
 
 - **Plain-language verdicts**: No event IDs to decode -- just "Windows Update restarted your PC" or "BSOD caused by nvlddmkm.sys"
@@ -39,6 +40,7 @@ That's it. You'll see something like:
 - **Surrounding events**: Shows what happened in the minutes before a restart for context
 - **RDP awareness**: Warns if you're in a Remote Desktop session and your "missing windows" might just be on a different session
 - **Crash dump analysis**: If `kd.exe` (Windows SDK Debugger) is installed, extracts bugcheck code, faulting module, and failure bucket from crash dumps
+- **AI-ready diagnostics**: `--ai prompt-only` saves a diagnostic prompt to file -- paste it into ChatGPT, Claude, or any AI tool for a plain-language explanation (no API key required). Or use `--ai` with Claude Code CLI for inline analysis.
 - **JSON output**: Pipe to `jq`, save to file, or feed to AI tools for deeper analysis
 - **Zero mandatory dependencies**: Core analysis uses only PowerShell (built into Windows). The Python CLI adds Rich for pretty output.
 
@@ -74,6 +76,12 @@ wtf-restarted --skip-dump
 
 # Show more surrounding events for context
 wtf-restarted --context-minutes 30
+
+# AI analysis -- saves prompt for any AI tool (no API key needed)
+wtf-restarted --ai prompt-only
+
+# AI analysis with Claude Code CLI (if installed)
+wtf-restarted --ai
 
 # Machine-readable JSON output
 wtf-restarted --json
@@ -134,7 +142,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full development setup including virt
 
 ## Roadmap
 
-- [ ] AI-enhanced diagnosis (Claude Code, Codex integration)
+- [x] AI-enhanced diagnosis (`--ai prompt-only`, `--ai` with Claude Code)
 - [ ] Auto-install helper for kd.exe / Windows SDK
 - [ ] Cross-platform support (Linux, macOS)
 - [ ] mcp-windbg integration for structured dump analysis

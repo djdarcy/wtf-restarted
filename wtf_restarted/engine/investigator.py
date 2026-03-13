@@ -5,6 +5,7 @@ from .ps_runner import run_ps1, run_ps_command
 
 def run_investigation(
     lookback_hours: int = 48,
+    strict_lookback: bool = False,
     skip_dump: bool = False,
     context_minutes: int = 10,
     verbose: bool = False,
@@ -19,6 +20,8 @@ def run_investigation(
         "ContextMinutes": context_minutes,
         "JsonOnly": True,
     }
+    if strict_lookback:
+        params["StrictLookback"] = True
     if skip_dump:
         params["SkipDump"] = True
 

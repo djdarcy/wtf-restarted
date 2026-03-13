@@ -64,11 +64,15 @@ class TestBuildParser:
 
     def test_verbose(self):
         args = build_parser().parse_args(["--verbose"])
-        assert args.verbose is True
+        assert args.verbose == 1
 
     def test_verbose_short(self):
         args = build_parser().parse_args(["-v"])
-        assert args.verbose is True
+        assert args.verbose == 1
+
+    def test_verbose_stacking(self):
+        args = build_parser().parse_args(["-vvv"])
+        assert args.verbose == 3
 
     # -- AI argument parsing --
 
@@ -127,7 +131,7 @@ class TestMainDispatch:
     def test_diagnose_dispatch(self, monkeypatch):
         called = {}
 
-        def mock_diagnose(args):
+        def mock_diagnose(args, argv=None):
             called["diagnose"] = True
 
         monkeypatch.setattr("wtf_restarted.cli._cmd_diagnose", mock_diagnose)
@@ -174,7 +178,7 @@ class TestAIOnlyImpliesAI:
         """--ai-only prompt-only should invoke AI with prompt-only backend."""
         called = {}
 
-        def spy_analyze(results, backend_name="claude", verbose=False, timeout=120):
+        def spy_analyze(results, backend_name="claude", verbose=False, timeout=120, refresh=False):
             called["backend"] = backend_name
             return {"success": False, "raw_response": "", "sections": {},
                     "error": "Prompt saved to: test.md\nPaste this prompt."}

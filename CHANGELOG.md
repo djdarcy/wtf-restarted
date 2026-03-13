@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1-alpha] - 2026-03-13
+
+### Added
+
+- **Three-tier progressive disclosure** ([#17](https://github.com/djdarcy/wtf-restarted/issues/17)): Tier 0 (verdict), Tier 1 (evidence), Tier 2 (diagnostics) with interactive keypress paging between tiers
+- **`--tier`**: select which tiers to show (`--tier 0` for quick answer, `--tier 1,2` for evidence + diagnostics)
+- **`--no-page`**: disable interactive paging between tiers
+- **Boot-anchored lookback**: default mode auto-extends past 48h to cover the most recent restart; explicit `--hours` uses a strict time window with informative notes about window behavior
+- **AI response caching** ([#18](https://github.com/djdarcy/wtf-restarted/issues/18)): SHA-256 hash with semantic event fingerprint ([#20](https://github.com/djdarcy/wtf-restarted/issues/20)), 24-hour TTL, `--ai-refresh` to bypass cache. Cache key uses event counts + sorted timestamps so `--hours 60` and `--hours 80` hit the same cache when they find identical events
+- **THAC0 verbosity system** ([#14](https://github.com/djdarcy/wtf-restarted/issues/14)): ported log_lib, core_lib, and help_lib from github-traffic-tracker -- 14 project-agnostic library files for structured output control
+- **Application channel definitions** (`wtf_restarted/output/channels.py`): 13 output channels (verdict, evidence, events, dump, context, system, history, ai, progress, hint, error, trace, general)
+- **`-v` stacking**: `-v`/`-vv`/`-vvv` for incremental verbosity (changed from boolean to counter)
+- **Evidence severity coloring**: red for bad (dirty shutdown, bugcheck, WHEA), cyan for info (initiator, WU), green for data (crash dump)
+- **Demo build script** (`scripts/build_demo.py`): automated VHS recording + gifsicle post-processing pipeline
+- **Session log search** (`scripts/search_sesslog.py`): search Claude Code session transcripts for commands, code, and decisions from previous sessions
+- **AI parameters documentation** in docs/parameters.md: backends, usage examples, JSON integration, prompt-only workflow
+- **Temporal query roadmap** ([#19](https://github.com/djdarcy/wtf-restarted/issues/19)): forward reference in docs for planned `--days`, `--time` range, and targeted investigation features
+
+### Changed
+
+- **investigate.ps1**: all event queries use boot-anchored `$restartLookback` instead of `$lookback`; new `-StrictLookback` switch; dump recency uses date comparison; JSON output includes `lookback_extended`, `lookback_actual_hours`, `strict_lookback`
+- **cli.py**: refactored `_run_ai_analysis` into `_get_ai_sections` (returns dict) + `_report_ai_failure`; lazy AI fetcher callback for deferred execution during rendering; THAC0 initialization at startup
+- **render.py**: split monolithic `render_diagnosis` into `_render_tier0`, `_render_tier1`, `_render_tier2` with content detection helpers; `render_diagnosis` is now the paging orchestrator; em dash replaced with ASCII `--`
+- **VHS demo tape**: updated for three-tier paging with AI analysis scene
+
+### Fixed
+
+- **Verdict regression**: Event 1074 aged out of 48h default window when uptime exceeded 48h, causing "CLEAN RESTART" instead of "INITIATED RESTART" -- boot-anchored lookback ensures verdict-critical events are always found
+- **`.gitignore`**: `lib/` pattern matched `wtf_restarted/lib/` -- changed to `/lib/` so only root-level lib/ is excluded (same for `lib64/`)
+- **`render_history`**: missing f-prefix on "No restart events" format string
+- **`-v` flag tests**: updated for count-based verbose (assertions use `== 1` not `is True`)
+- **`_cmd_diagnose` mock**: updated for new `argv` parameter
+
+### Tests
+
+- **116 -> 154** tests (+38: 23 THAC0 library sanity, 14 semantic fingerprint/cache key, 1 verbose stacking)
+
 ## [0.2.0-alpha] - 2026-03-12
 
 The 0.2.x series focuses on AI-enhanced diagnosis, with supporting improvements to logging infrastructure and output presentation.
@@ -88,6 +125,7 @@ The 0.2.x series focuses on AI-enhanced diagnosis, with supporting improvements 
 - Based on `crash_investigator.ps1` from the SYSDIAGNOSE project, modularized and enhanced
 - Project scaffolding from teeclip template (versioning, git hooks, CI/CD workflows)
 
+[0.2.1-alpha]: https://github.com/djdarcy/wtf-restarted/compare/v0.2.0a1...v0.2.1a1
 [0.2.0-alpha]: https://github.com/djdarcy/wtf-restarted/compare/v0.1.1...v0.2.0a1
 [0.1.1]: https://github.com/djdarcy/wtf-restarted/releases/tag/v0.1.1
 [0.1.0-alpha]: https://github.com/djdarcy/wtf-restarted/releases/tag/v0.1.0a1
