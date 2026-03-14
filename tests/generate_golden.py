@@ -127,9 +127,23 @@ def capture_render(func, *args, **kwargs):
 
     Writes to StringIO with no terminal emulation (force_terminal=False)
     to produce consistent plain-text output across CLI, pytest, and CI.
+
+    Phase 3: Sets up THAC0 OutputManager with matching verbosity so that
+    emit() gating matches the verbose= parameter passed to render functions.
     """
+    from wtf_restarted.lib.log_lib import init_output
+    from wtf_restarted.output.channels import CHANNELS
+
     if func.__name__ == "render_diagnosis":
         kwargs.setdefault("interactive", False)
+
+    # Determine verbosity from kwargs (verbose=True -> 1, verbose=N -> N)
+    verbose = kwargs.get("verbose", 0)
+    verbosity = int(verbose) if isinstance(verbose, (bool, int)) else 0
+
+    # Initialize THAC0 with matching verbosity for this capture
+    init_output(verbosity=verbosity, known_channels=CHANNELS, strict_channels=True)
+
     buf = StringIO()
     cap_console = Console(file=buf, width=WIDTH, force_terminal=False)
     with patch("wtf_restarted.output.render.console", cap_console):
@@ -150,12 +164,12 @@ GOLDEN_SPECS = [
         [SAMPLE_DIAGNOSIS],
         {},
     ),
-    # Verbose mode
+    # Verbose mode (verbosity=1 for THAC0 gating)
     (
         "diagnosis_verbose.golden",
         render.render_diagnosis,
         [SAMPLE_DIAGNOSIS],
-        {"verbose": True},
+        {"verbose": 1},
     ),
     # Tier 0 only
     (

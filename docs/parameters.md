@@ -94,7 +94,38 @@ These work with both `diagnose` and `history`.
 | Flag | Short | Type | Default | Description |
 |------|-------|------|---------|-------------|
 | `--json` | | flag | off | Output raw JSON instead of Rich-formatted tables. |
-| `--verbose` | `-v` | flag | off | Show all event log entries, not just the summary. |
+| `--verbose` | `-v` | counter | 0 | Increase verbosity. Stackable: `-v` (level 1), `-vv` (level 2), `-vvv` (level 3). |
+| `--quiet` | `-Q` | counter | 0 | Decrease verbosity. Stackable: `-Q` (level -1), `-QQ` (level -2), `-QQQQ` (total silence). |
+| `--show` | | CHANNEL:LEVEL | | Per-channel verbosity override. Repeatable. Example: `--show events:-4 --show dump:2`. |
+
+#### Verbosity levels
+
+The THAC0 verbosity system controls output density. `-v` and `-Q` adjust the global threshold; `--show` overrides individual channels.
+
+| Level | Flag | What's shown |
+|-------|------|-------------|
+| 1+ | `-v` | Default output + verbose all-events listing |
+| 0 | *(none)* | Verdict + evidence summary + key events (default) |
+| -1 | `-Q` | Reduced detail (system info hidden, verdict + evidence + events remain) |
+| -2 | `-QQ` | Header + verdict only |
+| -4 | `-QQQQ` | Total silence (exit code only -- useful for CI/headless) |
+
+`-v`/`-Q` (verbosity) and `--tier` (section selection) are orthogonal. `-Q` reduces detail density within visible tiers; `--tier` controls which tiers are shown at all.
+
+#### Output channels
+
+Available channels for `--show`: `verdict`, `evidence`, `events`, `dump`, `context`, `system`, `history`, `ai`, `progress`, `hint`, `error`, `trace`, `general`.
+
+```bash
+# Suppress events, keep everything else
+wtf-restarted --show events:-4
+
+# Show only verdict and evidence at default level
+wtf-restarted --show verdict:0 --show evidence:0 --show events:-4 --show dump:-4
+
+# Increase dump detail while keeping everything else at default
+wtf-restarted --show dump:2
+```
 
 #### JSON mode
 
@@ -118,7 +149,9 @@ The JSON schema is documented in [powershell-engine.md](powershell-engine.md#jso
 
 #### Verbose mode
 
-Verbose mode shows raw event log entries for every category, even when no relevant events were found. Without it, the output only shows categories where evidence was found. Useful for:
+`-v` shows additional event log entries beyond the default summary. Without it, the output only shows categories where evidence was found. Stackable: `-vv` and `-vvv` will show progressively more detail as content is assigned to higher levels in future releases.
+
+Useful for:
 - Confirming the tool checked everything (not just what it reported)
 - Seeing low-priority events that didn't affect the verdict
 - Debugging the tool's behavior
@@ -337,7 +370,9 @@ How the Python CLI flags map to the underlying PowerShell parameters:
 | `--context-minutes N` | `-ContextMinutes N` | -- |
 | `--days N` | -- | `-Days N` |
 | `--json` | `-JsonOnly` | *(always JSON)* |
-| `--verbose` | *(Python-side only)* | -- |
+| `-v` / `--verbose` | *(Python-side only)* | -- |
+| `-Q` / `--quiet` | *(Python-side only)* | -- |
+| `--show CHANNEL:LEVEL` | *(Python-side only)* | -- |
 | `--ai [BACKEND]` | *(Python-side only)* | -- |
 | `--ai-only [BACKEND]` | *(Python-side only)* | -- |
 | `--ai-verbose` | *(Python-side only)* | -- |
@@ -346,7 +381,7 @@ How the Python CLI flags map to the underlying PowerShell parameters:
 
 Note that `-DumpFile` and `-SymbolPath` are only available through the PowerShell script directly. The Python CLI does not expose these yet -- if you need that level of control, use the PS1 scripts.
 
-`--verbose` is handled on the Python side -- it controls whether the Rich renderer shows all event categories or only those with findings. The PowerShell script always collects everything regardless.
+`-v`/`-Q`/`--show` are handled on the Python side -- they control the THAC0 verbosity system which gates what the Rich renderer shows. The PowerShell script always collects everything regardless.
 
 ---
 

@@ -88,6 +88,13 @@ wtf-restarted --json
 
 # Verbose mode (all event categories)
 wtf-restarted -v
+
+# Quiet mode (reduced output)
+wtf-restarted -Q          # reduced detail
+wtf-restarted -QQ         # header + verdict only
+
+# Per-channel verbosity control
+wtf-restarted --show events:-4    # suppress events, keep everything else
 ```
 
 For detailed parameter descriptions, defaults, and guidance on when to adjust each flag, see [docs/parameters.md](docs/parameters.md).
@@ -125,6 +132,8 @@ See [docs/powershell-engine.md](docs/powershell-engine.md) for the full paramete
 - **Python 3.10+**
 - **Administrator** recommended (some event logs require elevation)
 - **kd.exe** optional (for crash dump analysis -- part of [Windows SDK Debugging Tools](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/))
+- **[Claude Code](https://docs.anthropic.com/en/docs/claude-code)** optional (for AI-enhanced diagnosis via `--ai claude`)
+- **[OpenAI Codex CLI](https://github.com/openai/codex)** optional (for AI-enhanced diagnosis via `--ai codex`)
 
 ## Installation
 

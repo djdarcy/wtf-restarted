@@ -54,7 +54,7 @@ def run_ps1(
         else:
             cmd.append(str(value))
 
-    if verbose:
+    if verbose and verbose > 0:
         print(f"Running: {' '.join(cmd)}", file=sys.stderr)
 
     try:

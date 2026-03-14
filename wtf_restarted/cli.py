@@ -12,6 +12,8 @@ Usage:
     wtf-restarted --tier 1,2       # Evidence + diagnostics (paged)
     wtf-restarted --no-page        # Show all tiers without paging
     wtf-restarted --verbose        # Show expanded event details
+    wtf-restarted -Q               # Less detail (-Q, -QQ, -QQQ)
+    wtf-restarted --show events:2  # Pin a channel to a verbosity level
     wtf-restarted --ai             # AI-enhanced analysis (Claude)
     wtf-restarted --ai codex       # AI analysis with specific backend
     wtf-restarted --ai-only        # Show only AI analysis
@@ -25,8 +27,13 @@ import sys
 from ._version import __version__, get_display_version
 
 
-def _init_thac0(verbosity: int) -> None:
-    """Initialize the THAC0 output system with project channels."""
+def _init_thac0(verbosity: int, channels: list = None) -> None:
+    """Initialize the THAC0 output system with project channels.
+
+    Args:
+        verbosity: Computed verbosity level (verbose - quiet).
+        channels: List of --show channel specs (e.g., ['events:2', 'trace:1']).
+    """
     from .lib.log_lib import init_output
     from .lib.log_lib.channels import KNOWN_CHANNELS, CHANNEL_DESCRIPTIONS, OPT_IN_CHANNELS
     from .output.channels import (
@@ -43,7 +50,12 @@ def _init_thac0(verbosity: int) -> None:
     OPT_IN_CHANNELS.clear()
     OPT_IN_CHANNELS.update(APP_OPT_IN)
 
-    init_output(verbosity=verbosity)
+    init_output(
+        verbosity=verbosity,
+        channels=channels,
+        known_channels=APP_CHANNELS,
+        strict_channels=True,
+    )
 
 
 def _hours_explicit(argv) -> bool:
@@ -71,6 +83,8 @@ def build_parser() -> argparse.ArgumentParser:
             "  wtf-restarted --tier 0            # quick answer only\n"
             "  wtf-restarted --tier 1,2          # evidence + diagnostics\n"
             "  wtf-restarted --no-page           # all tiers, no paging\n"
+            "  wtf-restarted -Q                  # less detail\n"
+            "  wtf-restarted --show events:2     # pin channel verbosity\n"
             "  wtf-restarted --json              # machine-readable output\n"
         ),
     )
@@ -143,6 +157,19 @@ def build_parser() -> argparse.ArgumentParser:
         action="count",
         default=0,
         help="increase output detail (-v, -vv, -vvv)",
+    )
+    out.add_argument(
+        "--quiet", "-Q",
+        action="count",
+        default=0,
+        help="decrease output detail (-Q, -QQ, -QQQ; -QQQQ = silent)",
+    )
+    out.add_argument(
+        "--show",
+        action="append",
+        default=None,
+        metavar="CHANNEL:LEVEL",
+        help="pin a channel to a verbosity level (e.g. events:2, trace:1)",
     )
 
     # -- AI options --
@@ -219,8 +246,11 @@ def main(argv=None):
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    # Initialize THAC0 output system with verbosity from -v flags
-    _init_thac0(args.verbose)
+    # Compute verbosity: -v increments, -Q decrements. They compose: -vv -Q = 1
+    args.verbose = args.verbose - args.quiet
+
+    # Initialize THAC0 output system
+    _init_thac0(args.verbose, channels=args.show)
 
     # Parse --tier early so we can fail fast on bad input
     if hasattr(args, "tier") and args.tier is not None:

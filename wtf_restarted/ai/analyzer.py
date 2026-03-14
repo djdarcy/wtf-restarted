@@ -23,6 +23,7 @@ _CACHE_TTL_SECONDS = 24 * 60 * 60  # 24 hours
 # Available backends (lazy-loaded)
 _BACKENDS = {
     "claude": "wtf_restarted.ai.backends.claude",
+    "codex": "wtf_restarted.ai.backends.codex",
     "prompt-only": "wtf_restarted.ai.backends.prompt_only",
 }
 

@@ -98,6 +98,65 @@ class TestRunPs1:
             assert "error" in result
 
 
+class TestRunPs1Verbose:
+    """Test verbose flag behavior across bool and int values."""
+
+    def _make_mock_result(self):
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = '{"ok": true}'
+        mock_result.stderr = ""
+        return mock_result
+
+    def test_verbose_true_prints_command(self):
+        """verbose=True (legacy bool) should print the 'Running:' debug line."""
+        with patch("wtf_restarted.engine.ps_runner.subprocess.run", return_value=self._make_mock_result()):
+            with patch("builtins.print") as mock_print:
+                run_ps1("investigate.ps1", verbose=True)
+                printed = " ".join(str(c) for c in mock_print.call_args_list)
+                assert "Running:" in printed
+
+    def test_verbose_1_prints_command(self):
+        """verbose=1 (-v mode) should print the 'Running:' debug line."""
+        with patch("wtf_restarted.engine.ps_runner.subprocess.run", return_value=self._make_mock_result()):
+            with patch("builtins.print") as mock_print:
+                run_ps1("investigate.ps1", verbose=1)
+                printed = " ".join(str(c) for c in mock_print.call_args_list)
+                assert "Running:" in printed
+
+    def test_verbose_0_no_debug_output(self):
+        """verbose=0 (default) should NOT print the 'Running:' debug line."""
+        with patch("wtf_restarted.engine.ps_runner.subprocess.run", return_value=self._make_mock_result()):
+            with patch("builtins.print") as mock_print:
+                run_ps1("investigate.ps1", verbose=0)
+                for call in mock_print.call_args_list:
+                    assert "Running:" not in str(call)
+
+    def test_verbose_negative_no_debug_output(self):
+        """verbose=-1 (-Q mode) should NOT print the 'Running:' debug line."""
+        with patch("wtf_restarted.engine.ps_runner.subprocess.run", return_value=self._make_mock_result()):
+            with patch("builtins.print") as mock_print:
+                run_ps1("investigate.ps1", verbose=-1)
+                for call in mock_print.call_args_list:
+                    assert "Running:" not in str(call)
+
+    def test_verbose_negative_2_no_debug_output(self):
+        """verbose=-2 (-QQ mode) should NOT print the 'Running:' debug line."""
+        with patch("wtf_restarted.engine.ps_runner.subprocess.run", return_value=self._make_mock_result()):
+            with patch("builtins.print") as mock_print:
+                run_ps1("investigate.ps1", verbose=-2)
+                for call in mock_print.call_args_list:
+                    assert "Running:" not in str(call)
+
+    def test_verbose_false_no_debug_output(self):
+        """verbose=False (legacy default) should NOT print the debug line."""
+        with patch("wtf_restarted.engine.ps_runner.subprocess.run", return_value=self._make_mock_result()):
+            with patch("builtins.print") as mock_print:
+                run_ps1("investigate.ps1", verbose=False)
+                for call in mock_print.call_args_list:
+                    assert "Running:" not in str(call)
+
+
 class TestRunPsCommand:
     """Test run_ps_command for one-liners."""
 

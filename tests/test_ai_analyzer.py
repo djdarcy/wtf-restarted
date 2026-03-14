@@ -127,6 +127,12 @@ class TestBackends:
         assert hasattr(backend, "invoke")
         assert hasattr(backend, "is_available")
 
+    def test_get_codex_backend(self):
+        backend = get_backend("codex")
+        assert hasattr(backend, "invoke")
+        assert hasattr(backend, "is_available")
+        assert hasattr(backend, "find_cli")
+
     def test_get_prompt_only_backend(self):
         backend = get_backend("prompt-only")
         assert backend.is_available()

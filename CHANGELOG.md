@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-03-14
+
+### Added
+
+- **Phase 3 THAC0-render integration** ([#15](https://github.com/djdarcy/wtf-restarted/issues/15)): all ~50 `console.print()` calls in render.py wrapped with `emit()` channel-aware calls; each section gated by verbosity level and channel
+- **`-Q` / `--quiet` flag**: counter flag that decrements verbosity (`-Q` = -1, `-QQ` = -2, `-QQQQ` = total silence)
+- **`--show CHANNEL:LEVEL`**: per-channel verbosity overrides (e.g., `--show events:-4` to suppress events while keeping everything else)
+- **Channel-aware content detection**: `_has_tier1_content()` and `_has_tier2_content()` check both data existence and channel visibility via `is_level_active()`
+- **Codex CLI backend** (`wtf_restarted/ai/backends/codex.py`): OpenAI Codex CLI integration with PATH discovery, Windows fallback locations, blocking and streaming modes
+- **Verbose truthiness tests** (`test_ps_runner.py`): 6 new tests covering verbose as True, 1, 0, -1, -2, False
+
+### Changed
+
+- **render.py**: all render sections flow through `out.emit(level, channel=..., render=lambda: ...)` with level assignments (header/-2, system info/-1, verdict/-2, evidence/0, events/0, dump/0, context/0, verbose all-events/1, AI/0, history/0)
+- **render.py**: `verbose` parameter changed from `bool` to `int` throughout
+- **generate_golden.py**: initializes THAC0 with matching verbosity before each golden file capture
+- Golden file snapshots regenerated to match emit()-wrapped output
+
+### Fixed
+
+- **`ps_runner.py` verbose truthiness**: `-Q` sets verbose to -1, which is truthy in Python -- changed `if verbose:` to `if verbose and verbose > 0:` to prevent "Running:" debug line at quiet levels
+
+### Tests
+
+- **181 -> 188** tests (+6 verbose truthiness, +1 AI test)
+
 ## [0.2.2-alpha] - 2026-03-13
 
 ### Added
@@ -143,6 +169,7 @@ The 0.2.x series focuses on AI-enhanced diagnosis, with supporting improvements 
 - Based on `crash_investigator.ps1` from the SYSDIAGNOSE project, modularized and enhanced
 - Project scaffolding from teeclip template (versioning, git hooks, CI/CD workflows)
 
+[0.2.3]: https://github.com/djdarcy/wtf-restarted/compare/v0.2.2a1...v0.2.3a1
 [0.2.2-alpha]: https://github.com/djdarcy/wtf-restarted/compare/v0.2.1a1...v0.2.2a1
 [0.2.1-alpha]: https://github.com/djdarcy/wtf-restarted/compare/v0.2.0a1...v0.2.1a1
 [0.2.0-alpha]: https://github.com/djdarcy/wtf-restarted/compare/v0.1.1...v0.2.0a1
