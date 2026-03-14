@@ -1,0 +1,16 @@
+
+┌────────────────────────────────────────┐
+│ WTF-RESTARTED -- Last Restart Analysis │
+└────────────────────────────────────────┘
+  Last boot:            2026-03-11 04:42:10  
+  Current uptime:       0.11:38:43           
+  Computer:             PLZWORK              
+
+┌────────────────────────────────────────────────────── VERDICT ───────────────────────────────────────────────────────┐
+│ INITIATED RESTART                                                                                                    │
+│                                                                                                                      │
+│ Windows Update triggered the restart.                                                                                │
+│   - KB5079473 (Security Update) installed                                                                            │
+│   - TrustedInstaller.exe initiated reboot                                                                            │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+

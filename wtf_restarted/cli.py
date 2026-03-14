@@ -261,14 +261,29 @@ def _cmd_diagnose(args, argv=None):
     # Explicit --hours means strict time-slice; default means boot-anchored.
     hours_explicit = _hours_explicit(argv)
 
-    # Run investigation
-    results = run_investigation(
-        lookback_hours=args.hours,
-        strict_lookback=hours_explicit,
-        skip_dump=args.skip_dump,
-        context_minutes=args.context_minutes,
-        verbose=args.verbose,
-    )
+    # Run investigation (with spinner for interactive terminals)
+    interactive = sys.stdout.isatty() and not args.json_output
+    if interactive:
+        from rich.console import Console
+        from .output.spinners import register_spinners, DEFAULT_SPINNER
+        register_spinners()
+        console = Console(stderr=True)
+        with console.status("[bold blue]Reading event logs...[/bold blue]", spinner=DEFAULT_SPINNER):
+            results = run_investigation(
+                lookback_hours=args.hours,
+                strict_lookback=hours_explicit,
+                skip_dump=args.skip_dump,
+                context_minutes=args.context_minutes,
+                verbose=args.verbose,
+            )
+    else:
+        results = run_investigation(
+            lookback_hours=args.hours,
+            strict_lookback=hours_explicit,
+            skip_dump=args.skip_dump,
+            context_minutes=args.context_minutes,
+            verbose=args.verbose,
+        )
 
     if "error" in results:
         print(f"Error: {results['error']}", file=sys.stderr)

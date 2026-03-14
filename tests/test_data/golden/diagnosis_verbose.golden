@@ -1,0 +1,62 @@
+
+┌────────────────────────────────────────┐
+│ WTF-RESTARTED -- Last Restart Analysis │
+└────────────────────────────────────────┘
+  Last boot:            2026-03-11 04:42:10  
+  Current uptime:       0.11:38:43           
+  Computer:             PLZWORK              
+
+┌────────────────────────────────────────────────────── VERDICT ───────────────────────────────────────────────────────┐
+│ INITIATED RESTART                                                                                                    │
+│                                                                                                                      │
+│ Windows Update triggered the restart.                                                                                │
+│   - KB5079473 (Security Update) installed                                                                            │
+│   - TrustedInstaller.exe initiated reboot                                                                            │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+                  Evidence Summary                  
+┌────────────────────────────────┬─────────────────┐
+│ Check                          │ Result          │
+├────────────────────────────────┼─────────────────┤
+│ Dirty shutdown (Event 41/6008) │ no              │
+│ BugCheck / BSOD event          │ no              │
+│ Shutdown initiator (Event      │ YES             │
+│ 1074)                          │                 │
+│ WHEA hardware error            │ no              │
+│ Windows Update near restart    │ YES             │
+│ Crash dump exists              │ no              │
+└────────────────────────────────┴─────────────────┘
+
+Shutdown Initiator
+  [2026-03-11 04:40:05] Process TrustedInstaller.exe initiated restart
+
+Kernel-Power Event 41
+  None found
+
+Event 6008 (Dirty Shutdown)
+  None found
+
+Shutdown Initiator (1074/1076)
+  [2026-03-11 04:40:05] Process TrustedInstaller.exe initiated restart
+
+Power Transitions (Event 109)
+  None found
+
+BugCheck / BSOD
+  None found
+
+WHEA Hardware Errors
+  None found
+
+Windows Update
+  [2026-03-11 04:38:12] KB5079473 installed successfully
+
+Application Crashes
+  None found
+
+GPU Driver Events
+  None found
+
+Boot/Shutdown Sequence
+  None found
+

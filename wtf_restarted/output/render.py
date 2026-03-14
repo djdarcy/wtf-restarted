@@ -604,7 +604,7 @@ def render_history(history: list, days: int = 30):
         etype = entry.get("type", "UNKNOWN")
         style = type_styles.get(etype, "white")
         time = entry.get("time", "")
-        msg = entry.get("message", "")[:200]
+        msg = entry.get("message", "")[:200]  # bumped from 80; revisit when config file exists
 
         table.add_row(
             time,

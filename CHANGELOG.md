@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2-alpha] - 2026-03-13
+
+### Added
+
+- **Spinner during event log loading** ([#21](https://github.com/djdarcy/wtf-restarted/issues/21)): animated star-themed spinner while PowerShell investigation runs; 10 spinner themes + 3 progress bar themes for future use
+- **Phase 3 THAC0 library changes** ([#15](https://github.com/djdarcy/wtf-restarted/issues/15)): three-layer renderer resolution in `emit()` (per-call `render=` > per-channel renderer > global `default_renderer` > built-in print fallback); `is_level_active(level, channel)` for gating expensive data collection; `emit()` returns bool; type safety on fallback path; strict channel validation via `strict_channels` + `known_channels`
+- **Golden file regression tests**: 9 snapshots of render output across tier/flag combos, captured before render.py refactoring to guard against output regressions
+- **MCP tool result extraction** (`scripts/extract_tool_result.py`): recovers MCP responses from Claude Code compaction files
+
+### Changed
+
+- `OutputManager.channel_active()` delegates to `is_level_active(0, channel)`
+- `init_output()` accepts `renderer`, `known_channels`, `strict_channels` params
+
+### Tests
+
+- **154 -> 181** tests (+19 Phase 3 renderer/channel/level tests, +9 golden file regression tests)
+
 ## [0.2.1-alpha] - 2026-03-13
 
 ### Added
@@ -125,6 +143,7 @@ The 0.2.x series focuses on AI-enhanced diagnosis, with supporting improvements 
 - Based on `crash_investigator.ps1` from the SYSDIAGNOSE project, modularized and enhanced
 - Project scaffolding from teeclip template (versioning, git hooks, CI/CD workflows)
 
+[0.2.2-alpha]: https://github.com/djdarcy/wtf-restarted/compare/v0.2.1a1...v0.2.2a1
 [0.2.1-alpha]: https://github.com/djdarcy/wtf-restarted/compare/v0.2.0a1...v0.2.1a1
 [0.2.0-alpha]: https://github.com/djdarcy/wtf-restarted/compare/v0.1.1...v0.2.0a1
 [0.1.1]: https://github.com/djdarcy/wtf-restarted/releases/tag/v0.1.1

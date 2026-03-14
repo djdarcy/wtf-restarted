@@ -21,13 +21,13 @@ Version levels:
 # Version components - edit these for version bumps
 MAJOR = 0
 MINOR = 2
-PATCH = 1
+PATCH = 2
 PHASE = "alpha"  # Per-MINOR feature set: None, "alpha", "beta", "rc1", etc.
 PRE_RELEASE_NUM = 1  # PEP 440 pre-release number (e.g., a1, b2)
 PROJECT_PHASE = "alpha"  # Project-wide: "prealpha", "alpha", "beta", "stable"
 
 # Auto-updated by git hooks - do not edit manually
-__version__ = "0.2.1-alpha_main_8-20260313-d0d3c316"
+__version__ = "0.2.2-alpha_main_9-20260313-5513e75e"
 __app_name__ = "wtf-restarted"
 
 

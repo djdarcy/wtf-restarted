@@ -49,6 +49,10 @@ class OutputManager:
         channel_overrides: Dict[str, int] = None,
         file: TextIO = None,
         quiet: bool = False,
+        renderer=None,
+        channel_renderers: Dict[str, Any] = None,
+        known_channels: Set[str] = None,
+        strict_channels: bool = False,
     ):
         # Backward compat: quiet=True forces verbosity negative
         if quiet and verbosity >= 0:
@@ -58,6 +62,12 @@ class OutputManager:
         self.file = file if file is not None else sys.stderr
         self.channel_fds: Dict[str, TextIO] = {}
         self._shown_hints: Set[str] = set()
+
+        # Phase 3: renderer resolution layers
+        self.default_renderer = renderer
+        self.channel_renderers: Dict[str, Any] = dict(channel_renderers or {})
+        self.known_channels: Set[str] = set(known_channels) if known_channels else set()
+        self.strict_channels = strict_channels
 
     def set_channel_fd(self, channel: str, fd: TextIO) -> None:
         """Set the output file handle for a channel at runtime.
@@ -99,30 +109,74 @@ class OutputManager:
             return sys.stderr
         return fd
 
-    def emit(self, level: int, message: str, *,
+    def emit(self, level: int, message: str = None, *,
              channel: str = 'general', file: TextIO = None,
-             **kwargs: Any) -> None:
+             render=None, **kwargs: Any) -> bool:
         """Emit a message if level <= threshold for that channel.
 
         The threshold is the per-channel override if set, otherwise
         the global verbosity. At threshold -4 (hard wall), nothing
         is emitted regardless of level.
 
+        Renderer resolution (highest priority first):
+            1. render= callable on this call
+            2. Per-channel renderer (channel_renderers)
+            3. Global default_renderer
+            4. Built-in print() fallback
+
         Args:
             level: Message level (higher = more verbose)
-            message: Format string (uses str.format with kwargs)
+            message: Format string (uses str.format with kwargs).
+                Optional when render= is provided.
             channel: Output channel name
             file: Per-message output override (highest priority FD)
+            render: Callable to invoke instead of print. Called with
+                no arguments -- use a closure to pass data.
             **kwargs: Values for template placeholders
+
+        Returns:
+            True if the message was shown, False if gated.
         """
         threshold = self.channel_overrides.get(channel, self.verbosity)
         if threshold <= -4:
-            return
+            return False
         if level > threshold:
-            return
+            return False
+
+        # Strict channel validation
+        if self.strict_channels and self.known_channels and channel not in self.known_channels:
+            raise ValueError(f"Unknown channel '{channel}'")
+
+        # Layer 1: per-call render callable
+        if render is not None:
+            render()
+            return True
+
+        # Layer 2: per-channel renderer
+        channel_renderer = self.channel_renderers.get(channel)
+        if channel_renderer is not None:
+            channel_renderer()
+            return True
+
+        # Layer 3: global default renderer
+        if self.default_renderer is not None:
+            if message is not None:
+                text = message.format(**kwargs) if kwargs else message
+                self.default_renderer(text)
+            return True
+
+        # Layer 4: built-in fallback
+        if message is not None and not isinstance(message, str):
+            raise TypeError(
+                f"emit() message must be str, got {type(message).__name__}. "
+                "Use render= for complex objects."
+            )
+        if message is None:
+            return True
         text = message.format(**kwargs) if kwargs else message
         dest = self._resolve_fd(channel, file)
         print(text, file=dest)
+        return True
 
     def hint(self, hint_id: str, context: str = 'result', **kwargs: Any) -> None:
         """Show a hint if appropriate for context, level, and not yet shown.
@@ -175,6 +229,22 @@ class OutputManager:
         """
         self.emit(-3, message, channel='error', file=file)
 
+    def is_level_active(self, level: int, channel: str = 'general') -> bool:
+        """Check if a message at the given level/channel would be shown.
+
+        Allows callers to gate expensive data collection (not just rendering)
+        before calling emit(). Generalizes channel_active() to any level.
+
+        Args:
+            level: Message level to check
+            channel: Channel name
+
+        Returns:
+            True if the message would pass the threshold check
+        """
+        threshold = self.channel_overrides.get(channel, self.verbosity)
+        return threshold > -4 and level <= threshold
+
     def channel_active(self, channel: str) -> bool:
         """Check if a channel would display messages at its default level.
 
@@ -187,8 +257,7 @@ class OutputManager:
         Returns:
             True if the channel is active
         """
-        threshold = self.channel_overrides.get(channel, self.verbosity)
-        return threshold > -4 and 0 <= threshold
+        return self.is_level_active(0, channel)
 
     @property
     def quiet(self) -> bool:
@@ -210,18 +279,27 @@ _manager: Optional[OutputManager] = None
 
 def init_output(verbosity: int = 0, quiet: bool = False,
                 channels: list = None,
-                channel_fds: Dict[str, TextIO] = None) -> OutputManager:
+                channel_fds: Dict[str, TextIO] = None,
+                renderer=None,
+                known_channels: Set[str] = None,
+                strict_channels: bool = False) -> OutputManager:
     """Initialize the module-level OutputManager singleton.
 
     Call once at program startup after parsing CLI arguments.
 
     Args:
         verbosity: THAC0 verbosity level (0=default, positive=verbose, negative=quiet)
-        quiet: Legacy backward compat — if True, sets verbosity to min(verbosity, -1)
+        quiet: Legacy backward compat -- if True, sets verbosity to min(verbosity, -1)
         channels: List of channel spec strings (e.g., ['timing:2', 'vals'])
         channel_fds: Default output FDs per channel (e.g., {'general': sys.stdout}).
             These populate the manager's channel_fds dict, acting as layer 3
             in the FD resolution hierarchy (below file= and set_channel_fd).
+        renderer: Default renderer callable (e.g., console.print). Used as
+            Layer 3 in renderer resolution when no per-call render= or
+            per-channel renderer is set.
+        known_channels: Set of valid channel names. When combined with
+            strict_channels=True, emit() raises ValueError on unknown channels.
+        strict_channels: If True, validate channel names against known_channels.
 
     Returns:
         The initialized OutputManager instance
@@ -244,6 +322,9 @@ def init_output(verbosity: int = 0, quiet: bool = False,
     _manager = OutputManager(
         verbosity=verbosity,
         channel_overrides=channel_overrides,
+        renderer=renderer,
+        known_channels=known_channels,
+        strict_channels=strict_channels,
     )
 
     # Apply channel FD defaults

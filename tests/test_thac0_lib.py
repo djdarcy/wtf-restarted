@@ -172,6 +172,136 @@ class TestHelpLib:
         assert "wtf-restarted" in output
 
 
+class TestRendererResolution:
+    """Phase 3: three-layer renderer resolution in emit()."""
+
+    def test_per_call_render_wins(self):
+        """Layer 1: render= callable takes priority over everything."""
+        buf = StringIO()
+        called = []
+        om = OutputManager(verbosity=0, file=buf, renderer=lambda t: called.append(('global', t)))
+        result = om.emit(0, "ignored", render=lambda: called.append('per-call'))
+        assert result is True
+        assert called == ['per-call']
+
+    def test_channel_renderer_wins_over_global(self):
+        """Layer 2: per-channel renderer takes priority over global."""
+        called = []
+        om = OutputManager(
+            verbosity=0,
+            file=StringIO(),
+            renderer=lambda t: called.append(('global', t)),
+            channel_renderers={'system': lambda: called.append('channel')},
+        )
+        om.emit(0, "ignored", channel='system')
+        assert called == ['channel']
+
+    def test_global_renderer_used(self):
+        """Layer 3: global default_renderer used when no per-call/channel."""
+        called = []
+        om = OutputManager(
+            verbosity=0,
+            file=StringIO(),
+            renderer=lambda t: called.append(('global', t)),
+        )
+        om.emit(0, "hello world")
+        assert called == [('global', 'hello world')]
+
+    def test_builtin_fallback(self):
+        """Layer 4: built-in print() when no renderers set."""
+        buf = StringIO()
+        om = OutputManager(verbosity=0, file=buf)
+        om.emit(0, "fallback text")
+        assert "fallback text" in buf.getvalue()
+
+    def test_emit_returns_bool(self):
+        """emit() returns True when shown, False when gated."""
+        buf = StringIO()
+        om = OutputManager(verbosity=0, file=buf)
+        assert om.emit(0, "shown") is True
+        assert om.emit(TIMING, "gated") is False
+
+    def test_emit_returns_false_at_wall(self):
+        """emit() returns False at hard wall (-4)."""
+        om = OutputManager(verbosity=NOTHING, file=StringIO())
+        assert om.emit(ERROR, "blocked") is False
+
+    def test_type_check_on_fallback(self):
+        """Built-in fallback raises TypeError for non-str messages."""
+        import pytest
+        om = OutputManager(verbosity=0, file=StringIO())
+        with pytest.raises(TypeError, match="must be str"):
+            om.emit(0, 42)
+
+    def test_none_message_with_render(self):
+        """render= works without a message string."""
+        called = []
+        om = OutputManager(verbosity=0, file=StringIO())
+        result = om.emit(0, render=lambda: called.append('rendered'))
+        assert result is True
+        assert called == ['rendered']
+
+
+class TestStrictChannels:
+    """Phase 3: strict channel validation."""
+
+    def test_strict_rejects_unknown(self):
+        import pytest
+        om = OutputManager(
+            verbosity=0,
+            file=StringIO(),
+            known_channels={'general', 'system'},
+            strict_channels=True,
+        )
+        with pytest.raises(ValueError, match="Unknown channel 'typo'"):
+            om.emit(0, "oops", channel='typo')
+
+    def test_strict_allows_known(self):
+        buf = StringIO()
+        om = OutputManager(
+            verbosity=0,
+            file=buf,
+            known_channels={'general', 'system'},
+            strict_channels=True,
+        )
+        result = om.emit(0, "ok", channel='system')
+        assert result is True
+
+    def test_non_strict_allows_anything(self):
+        buf = StringIO()
+        om = OutputManager(verbosity=0, file=buf, strict_channels=False)
+        result = om.emit(0, "ok", channel='anything_goes')
+        assert result is True
+
+
+class TestIsLevelActive:
+    """Phase 3: is_level_active() generalization."""
+
+    def test_default_level_active(self):
+        om = OutputManager(verbosity=0)
+        assert om.is_level_active(0) is True
+        assert om.is_level_active(-1) is True
+
+    def test_above_threshold_inactive(self):
+        om = OutputManager(verbosity=0)
+        assert om.is_level_active(1) is False
+
+    def test_channel_override_respected(self):
+        om = OutputManager(verbosity=0, channel_overrides={'debug': 3})
+        assert om.is_level_active(3, 'debug') is True
+        assert om.is_level_active(3, 'general') is False
+
+    def test_wall_blocks_all(self):
+        om = OutputManager(verbosity=NOTHING)
+        assert om.is_level_active(-3) is False
+
+    def test_channel_active_uses_is_level_active(self):
+        om = OutputManager(verbosity=0, channel_overrides={'trace': -1})
+        assert om.channel_active('trace') is False
+        assert om.channel_active('general') is True
+        assert om.is_level_active(0, 'trace') is False
+
+
 class TestInitOutput:
     """init_output/get_output singleton pattern."""
 
@@ -179,3 +309,21 @@ class TestInitOutput:
         om = init_output(verbosity=1)
         assert om is get_output()
         assert om.verbosity == 1
+
+    def test_init_with_renderer(self):
+        called = []
+        om = init_output(verbosity=0, renderer=lambda t: called.append(t))
+        assert om.default_renderer is not None
+        om.emit(0, "test")
+        assert called == ["test"]
+
+    def test_init_with_strict_channels(self):
+        import pytest
+        om = init_output(
+            verbosity=0,
+            known_channels={'general', 'system'},
+            strict_channels=True,
+        )
+        assert om.strict_channels is True
+        with pytest.raises(ValueError):
+            om.emit(0, "bad", channel='typo')
