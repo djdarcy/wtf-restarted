@@ -60,10 +60,12 @@ if [ -f "$SCRIPT_DIR/hooks/pre-push" ]; then
     chmod +x "$HOOKS_DIR/pre-push"
 fi
 
-# Make version update script executable
-if [ -f "$SCRIPT_DIR/update-version.sh" ]; then
+# Make sync-versions.py accessible (no chmod needed for Python)
+if [ -f "$SCRIPT_DIR/sync-versions.py" ]; then
+    echo -e "${GREEN}Found sync-versions.py (version management)${NC}"
+elif [ -f "$SCRIPT_DIR/update-version.sh" ]; then
     chmod +x "$SCRIPT_DIR/update-version.sh"
-    echo -e "${GREEN}Made update-version.sh executable${NC}"
+    echo -e "${YELLOW}Using legacy update-version.sh (sync-versions.py not found)${NC}"
 fi
 
 echo ""
@@ -83,7 +85,9 @@ echo "  - Run tests"
 echo "  - Check for debug statements"
 echo ""
 echo "You can manually update the version at any time with:"
-echo "  ./scripts/update-version.sh"
+echo "  python scripts/sync-versions.py"
+echo "  python scripts/sync-versions.py --bump patch"
+echo "  python scripts/sync-versions.py --check"
 echo ""
 echo -e "${BLUE}Version format:${NC}"
 echo "  VERSION_BRANCH_BUILD-YYYYMMDD-COMMITHASH"

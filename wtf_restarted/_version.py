@@ -8,8 +8,8 @@ with build metadata (branch, build number, date, commit hash).
 Format: MAJOR.MINOR.PATCH[-PHASE]_BRANCH_BUILD-YYYYMMDD-COMMITHASH
 Example: 0.1.0_main_4-20260311-a1b2c3d4
 
-To manually update: ./scripts/update-version.sh
-To bump version: edit MAJOR, MINOR, PATCH below
+To sync versions: python scripts/sync-versions.py
+To bump version: python scripts/sync-versions.py --bump patch
 
 Version levels:
   PROJECT_PHASE: Global project maturity (prealpha -> alpha -> beta -> stable).
@@ -27,7 +27,7 @@ PRE_RELEASE_NUM = 1  # PEP 440 pre-release number (e.g., a1, b2)
 PROJECT_PHASE = "alpha"  # Project-wide: "prealpha", "alpha", "beta", "stable"
 
 # Auto-updated by git hooks - do not edit manually
-__version__ = "0.2.3_main_10-20260314-0bcc10b3"
+__version__ = "0.2.3_main_11-20260314-cef283e6"
 __app_name__ = "wtf-restarted"
 
 

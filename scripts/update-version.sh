@@ -1,5 +1,17 @@
 #!/bin/bash
 #
+# DEPRECATED: Use scripts/sync-versions.py instead.
+#
+#   python scripts/sync-versions.py          # sync all version files
+#   python scripts/sync-versions.py --auto   # git hook mode
+#   python scripts/sync-versions.py --bump patch  # bump version
+#   python scripts/sync-versions.py --check  # verify sync (CI)
+#
+# This script is retained as a fallback for one release cycle.
+# It will be removed in a future release.
+#
+# ------- Legacy script below -------
+#
 # Manual version update script for wtf-restarted
 # Updates version string without requiring a commit
 # Useful for testing and manual version synchronization

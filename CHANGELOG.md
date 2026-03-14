@@ -169,7 +169,8 @@ The 0.2.x series focuses on AI-enhanced diagnosis, with supporting improvements 
 - Based on `crash_investigator.ps1` from the SYSDIAGNOSE project, modularized and enhanced
 - Project scaffolding from teeclip template (versioning, git hooks, CI/CD workflows)
 
-[0.2.3]: https://github.com/djdarcy/wtf-restarted/compare/v0.2.2a1...v0.2.3a1
+[Unreleased]: https://github.com/djdarcy/wtf-restarted/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/djdarcy/wtf-restarted/compare/v0.2.2a1...v0.2.3
 [0.2.2-alpha]: https://github.com/djdarcy/wtf-restarted/compare/v0.2.1a1...v0.2.2a1
 [0.2.1-alpha]: https://github.com/djdarcy/wtf-restarted/compare/v0.2.0a1...v0.2.1a1
 [0.2.0-alpha]: https://github.com/djdarcy/wtf-restarted/compare/v0.1.1...v0.2.0a1

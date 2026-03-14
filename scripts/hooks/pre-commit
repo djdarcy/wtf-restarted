@@ -11,29 +11,23 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 # PART 1: Update version.py
 # -------------------------
-UPDATE_SCRIPT="$REPO_ROOT/scripts/update-version.sh"
-if [ -f "$UPDATE_SCRIPT" ]; then
+SYNC_SCRIPT="$REPO_ROOT/scripts/sync-versions.py"
+if [ -f "$SYNC_SCRIPT" ] && command -v python >/dev/null 2>&1; then
     # Run in auto mode to update version before commit
-    # Capture output to check if it's just "already up to date"
-    UPDATE_OUTPUT=$("$UPDATE_SCRIPT" --auto 2>&1)
+    UPDATE_OUTPUT=$(python "$SYNC_SCRIPT" --auto 2>&1)
     UPDATE_EXIT=$?
 
     if [ $UPDATE_EXIT -eq 0 ]; then
-        # Success - either updated or already current
-        # Check if version.py was actually modified
+        # Success - check if version.py was staged
         if git diff --cached --name-only | grep -q "_version.py"; then
             echo "✓ Version updated for commit"
-        else
-            # No changes to version.py - it was already up to date
-            # This is fine, just silent success
-            :
         fi
     else
-        # Real error occurred
         echo "⚠ Warning: Version update failed but continuing"
-        # Optionally show the error in verbose mode
-        # echo "  Error: $UPDATE_OUTPUT"
     fi
+elif [ -f "$REPO_ROOT/scripts/update-version.sh" ]; then
+    # Fallback to legacy bash script
+    "$REPO_ROOT/scripts/update-version.sh" --auto 2>&1 || echo "⚠ Warning: Version update failed but continuing"
 fi
 
 # PART 2: Check for private content

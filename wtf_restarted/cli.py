@@ -408,12 +408,16 @@ def _get_ai_sections(args, results):
     if ai_result.get("cached") and not args.ai_verbose and not args.json_output:
         print("(using cached result)", file=sys.stderr)
 
-    return {
+    result = {
         "success": ai_result["success"],
         "backend": backend,
         "sections": ai_result["sections"],
         "error": ai_result["error"],
     }
+    if ai_result.get("cached"):
+        result["cached"] = True
+        result["cached_at"] = ai_result.get("cached_at")
+    return result
 
 
 def _show_lookback_note(results, hours_explicit):
