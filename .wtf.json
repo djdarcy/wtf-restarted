@@ -1,0 +1,35 @@
+{
+    "name": "restarted",
+    "version": "0.2.3",
+    "description": "Why did my Windows PC restart? One command, instant answers.",
+    "namespace": "core",
+    "language": "python",
+    "platform": "windows",
+    "platforms": ["windows"],
+    "runtime": {
+        "type": "python",
+        "pass_through": true,
+        "module": "wtf_restarted",
+        "entry_point": "main",
+        "script_path": "wtf_restarted/cli.py"
+    },
+    "taxonomy": {
+        "category": "windows-diagnostics",
+        "tags": ["restart", "reboot", "crash", "bsod", "event-log", "shutdown"]
+    },
+    "diagnostics": {
+        "event_logs": ["System"],
+        "event_ids": [41, 1074, 6005, 6006, 6008, 6009, 6013, 1001],
+        "required_privileges": "user",
+        "ps1_scripts": ["wtf_restarted/ps1/investigate.ps1"],
+        "supports_history": true,
+        "supports_ai": true
+    },
+    "source": {
+        "url": "https://github.com/djdarcy/wtf-restarted.git"
+    },
+    "lifecycle": {
+        "stage": "graduated",
+        "graduated_to": "https://github.com/djdarcy/wtf-restarted"
+    }
+}
